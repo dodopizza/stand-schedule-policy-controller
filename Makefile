@@ -7,6 +7,8 @@ CURRENT_DIR := $(dir $(MAKEFILE_PATH))
 PROJECT_NAME = stand-schedule-policy-controller
 DOCKER_IMAGE_COMMIT_SHA=$(shell git show -s --format=%h)
 DOCKER_IMAGE_REPO = dodoreg.azurecr.io/${PROJECT_NAME}
+CONTROLLER_GEN=${GOPATH}/bin/controller-gen
+CONTROLLER_GEN_REQ_VERSION := v0.9.1-0.20220629131006-1878064c4cdf
 
 BUILD_OS := $(shell uname | sed 's/./\L&/g')
 BUILD_ARCH := $(shell uname -m)
@@ -17,24 +19,35 @@ endif
 .PHONY: all
 all: help
 
+.PHONY: setup
+setup: controller-gen-install ## Install all required external tools
+
+.PHONY: controller-gen-install
+controller-gen-install: ## Install controller gen tool
+	@hack/controller-gen-install.sh ${CONTROLLER_GEN_REQ_VERSION}
+
 .PHONY: prepare
-prepare: tidy lint
+prepare: tidy lint ## Run all available checks and generators
+
+.PHONY: controller-gen-deepcopy
+controller-gen-deepcopy: setup
+	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
 .PHONY: lint
-lint:
+lint: ## Run linters via golangci-lint
 	golangci-lint run
 
 .PHONY: tidy
-tidy:
+tidy: ## Run tidy for go module to remove unused dependencies
 	go mod tidy -v
 
 .PHONY: build
-build:
+build: ## Build app locally
 	@GOOS=$(BUILD_OS) GOARCH=$(BUILD_ARCH) CGO_ENABLED=0 go build -v -o ./bin/${PROJECT_NAME} ./cmd
 
 .PHONY: build-docker
 build-docker: BUILD_OS = linux
-build-docker: build
+build-docker: build ## Build app locally and create docker image
 	docker build \
 	--progress plain \
 	--platform linux/${BUILD_ARCH} \
@@ -44,36 +57,28 @@ build-docker: build
 
 .PHONY: push-docker
 push-docker: BUILD_OS = linux
-push-docker: build-docker
+push-docker: build-docker ## Build app locally and push docker image
 	docker push "${DOCKER_IMAGE_REPO}:${DOCKER_IMAGE_COMMIT_SHA}"
 
 .PHONY: test
-test:
+test: ## Run all tests
 	go test -v -timeout 300s --tags=integration ./test/...
 
 .PHONY: run
-run: build
+run: build ## Run app locally
 	@./bin/${PROJECT_NAME}
 
 .PHONY: run-docker
-run-docker: build-docker
+run-docker: build-docker ## Run app in docker
 	@docker run \
 	-it \
 	--rm "${DOCKER_IMAGE_REPO}:${DOCKER_IMAGE_COMMIT_SHA}"
 
 .PHONY: help
-help:
+help: ## Shows the available commands
 	@echo ''
 	@echo 'Usage:'
 	@echo '  ${YELLOW}make${RESET} ${GREEN}<target>${RESET}'
 	@echo ''
 	@echo 'Targets:'
-	@echo "  ${YELLOW}prepare                   ${RESET} Run all available checks and generators"
-	@echo "  ${YELLOW}lint                      ${RESET} Run linters via golangci-lint"
-	@echo "  ${YELLOW}tidy                      ${RESET} Run tidy for go module to remove unused dependencies"
-	@echo "  ${YELLOW}build                     ${RESET} Build app locally"
-	@echo "  ${YELLOW}build-docker              ${RESET} Build app locally and create docker image"
-	@echo "  ${YELLOW}push-docker               ${RESET} Build app locally and push docker image"
-	@echo "  ${YELLOW}test                      ${RESET} Run tests locally"
-	@echo "  ${YELLOW}run                       ${RESET} Run app locally"
-	@echo "  ${YELLOW}run-docker                ${RESET} Run app in docker"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  ${YELLOW}%-30s${RESET} %s\n", $$1, $$2}'
