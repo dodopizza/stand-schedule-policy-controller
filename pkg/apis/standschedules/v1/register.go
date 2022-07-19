@@ -11,11 +11,11 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
-	"github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedulepolicy"
+	"github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules"
 )
 
 // SchemeGroupVersion is group version used to register these objects
-var SchemeGroupVersion = schema.GroupVersion{Group: standschedulepolicy.GroupName, Version: "v1"}
+var SchemeGroupVersion = schema.GroupVersion{Group: standschedules.GroupName, Version: "v1"}
 
 // Kind takes an unqualified kind and returns back a Group qualified GroupKind
 func Kind(kind string) schema.GroupKind {
