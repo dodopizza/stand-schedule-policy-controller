@@ -5,7 +5,10 @@ go 1.18
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.1.1
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.1.0
+	github.com/ilyakaznacheev/cleanenv v1.3.0
+	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.12.2
+	go.uber.org/zap v1.21.0
 	k8s.io/client-go v0.24.3
 )
 
@@ -37,7 +40,6 @@ require (
 	github.com/google/gnostic v0.5.7-v3refs // indirect
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/google/uuid v1.1.2 // indirect
-	github.com/ilyakaznacheev/cleanenv v1.3.0 // indirect
 	github.com/imdario/mergo v0.3.5 // indirect
 	github.com/joho/godotenv v1.4.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
@@ -55,7 +57,6 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	go.uber.org/atomic v1.7.0 // indirect
 	go.uber.org/multierr v1.6.0 // indirect
-	go.uber.org/zap v1.21.0 // indirect
 	golang.org/x/crypto v0.0.0-20220511200225-c6db032c6c88 // indirect
 	golang.org/x/net v0.0.0-20220425223048-2871e0cb64e4 // indirect
 	golang.org/x/oauth2 v0.0.0-20211104180415-d3ed0bb246c8 // indirect

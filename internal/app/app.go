@@ -49,7 +49,7 @@ func New(cfg *config.Config, l *zap.Logger) (*App, error) {
 func Run(l *zap.Logger, cfg *config.Config) {
 	app, err := New(cfg, l)
 	if err != nil {
-		l.Fatal("failed to initialize app", zap.Error(err))
+		l.Fatal("Failed to initialize app", zap.Error(err))
 	}
 
 	app.logger.Info("Application starting")
@@ -64,7 +64,7 @@ func Run(l *zap.Logger, cfg *config.Config) {
 	//case err = <-app.controller.Notify():
 	//	app.logger.Error(errors.Wrap(err, "controller failure"))
 	case err = <-app.server.Notify():
-		app.logger.Error("http server failure", zap.Error(err))
+		app.logger.Error("Http server failure", zap.Error(err))
 	}
 
 	app.logger.Info("Application stopping")
@@ -72,7 +72,7 @@ func Run(l *zap.Logger, cfg *config.Config) {
 	//	app.logger.Error(errors.Wrap(err, "controller shutdown failure"))
 	//}
 	if err := app.server.Shutdown(); err != nil {
-		app.logger.Error("http server shutdown failure", zap.Error(err))
+		app.logger.Error("Http server shutdown failure", zap.Error(err))
 	}
 	app.logger.Info("Application stopped")
 }
@@ -84,7 +84,7 @@ func (app *App) SetupSignalHandlers() {
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		app.logger.Info("Signal received: %s", zap.Stringer("signal", <-signals))
+		app.logger.Info("Signal received", zap.Stringer("signal", <-signals))
 		close(app.interrupt)
 	}()
 }
