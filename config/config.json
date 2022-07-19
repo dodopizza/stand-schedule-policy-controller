@@ -1,0 +1,12 @@
+{
+  "kube": {
+    "access_type": "external"
+  },
+  "azure": {
+    "auth_type": "default",
+    "subscription_id": ""
+  },
+  "http": {
+    "port": 5000
+  }
+}
