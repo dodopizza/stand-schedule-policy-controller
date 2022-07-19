@@ -5,9 +5,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/dodopizza/stand-schedule-policy-controller/internal/app"
-
 	"github.com/dodopizza/stand-schedule-policy-controller/config"
+	"github.com/dodopizza/stand-schedule-policy-controller/internal/app"
 )
 
 func main() {
