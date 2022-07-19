@@ -1,3 +1,9 @@
+/*
+Copyright Dodo Engineering
+
+Authored by The Infrastructure Platform Team.
+*/
+
 package v1
 
 import (
@@ -106,3 +112,13 @@ const (
 	// PolicyFailed means that policy actions completed and failed.
 	PolicyFailed PolicyStatusConditionType = "Failed"
 )
+
+// +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
+
+// StandSchedulePolicyList is a list of StandSchedulePolicy resources
+type StandSchedulePolicyList struct {
+	metav1.TypeMeta `json:",inline"`
+	metav1.ListMeta `json:"metadata"`
+
+	Items []StandSchedulePolicy `json:"items"`
+}
