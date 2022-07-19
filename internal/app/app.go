@@ -10,6 +10,7 @@ import (
 
 	"github.com/dodopizza/stand-schedule-policy-controller/config"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/azure"
+	"github.com/dodopizza/stand-schedule-policy-controller/internal/controller"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/http"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/kubernetes"
 	"github.com/dodopizza/stand-schedule-policy-controller/pkg/httpserver"
@@ -17,11 +18,12 @@ import (
 
 type (
 	App struct {
-		logger    *zap.Logger
-		kube      kubernetes.Interface
-		az        azure.Interface
-		server    *httpserver.Server
-		interrupt chan struct{}
+		logger     *zap.Logger
+		kube       kubernetes.Interface
+		az         azure.Interface
+		server     *httpserver.Server
+		controller *controller.Controller
+		interrupt  chan struct{}
 	}
 )
 
@@ -37,12 +39,14 @@ func New(cfg *config.Config, l *zap.Logger) (*App, error) {
 	}
 
 	hs := httpserver.New(http.NewRouter(), httpserver.Port(cfg.Http.Port))
+	c := controller.NewController(k, az, l, &cfg.Controller)
 
 	return &App{
-		logger: l,
-		kube:   k,
-		az:     az,
-		server: hs,
+		logger:     l,
+		kube:       k,
+		az:         az,
+		server:     hs,
+		controller: c,
 	}, nil
 }
 
@@ -55,22 +59,22 @@ func Run(l *zap.Logger, cfg *config.Config) {
 	app.logger.Info("Application starting")
 	app.SetupSignalHandlers()
 	app.server.Start()
-	//app.controller.Start(app.interrupt)
+	app.controller.Start(app.interrupt)
 	app.logger.Info("Application started")
 
 	select {
 	case <-app.interrupt:
 		app.logger.Info("Interruption received")
-	//case err = <-app.controller.Notify():
-	//	app.logger.Error(errors.Wrap(err, "controller failure"))
+	case err = <-app.controller.Notify():
+		app.logger.Error("Controller failure", zap.Error(err))
 	case err = <-app.server.Notify():
 		app.logger.Error("Http server failure", zap.Error(err))
 	}
 
 	app.logger.Info("Application stopping")
-	//if err := app.controller.Shutdown(); err != nil {
-	//	app.logger.Error(errors.Wrap(err, "controller shutdown failure"))
-	//}
+	if err := app.controller.Shutdown(); err != nil {
+		app.logger.Error("Controller shutdown failure", zap.Error(err))
+	}
 	if err := app.server.Shutdown(); err != nil {
 		app.logger.Error("Http server shutdown failure", zap.Error(err))
 	}

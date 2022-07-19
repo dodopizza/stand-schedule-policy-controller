@@ -6,15 +6,17 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/azure"
+	"github.com/dodopizza/stand-schedule-policy-controller/internal/controller"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/http"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/kubernetes"
 )
 
 type (
 	Config struct {
-		Kube  kubernetes.Config `json:"kube"`
-		Azure azure.Config      `json:"azure"`
-		Http  http.Config       `json:"http"`
+		Kube       kubernetes.Config `json:"kube"`
+		Azure      azure.Config      `json:"azure"`
+		Http       http.Config       `json:"http"`
+		Controller controller.Config `json:"controller"`
 	}
 )
 
