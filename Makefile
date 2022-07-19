@@ -29,9 +29,13 @@ controller-gen-install: ## Install controller gen tool
 .PHONY: prepare
 prepare: tidy lint ## Run all available checks and generators
 
-.PHONY: controller-gen-deepcopy
-controller-gen-deepcopy: setup
+.PHONY: autogen-deepcopy
+autogen-deepcopy: setup ## Generate deep copy methods for custom types
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+
+.PHONY: autogen-client
+autogen-client: setup
+
 
 .PHONY: lint
 lint: ## Run linters via golangci-lint
