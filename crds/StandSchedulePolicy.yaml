@@ -1,0 +1,140 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.9.1-0.20220629131006-1878064c4cdf
+  creationTimestamp: null
+  name: standschedulepolicies.automation.dodois.io
+spec:
+  group: automation.dodois.io
+  names:
+    kind: StandSchedulePolicy
+    listKind: StandSchedulePolicyList
+    plural: standschedulepolicies
+    shortNames:
+    - sspol
+    singular: standschedulepolicy
+  scope: Cluster
+  versions:
+  - name: v1
+    schema:
+      openAPIV3Schema:
+        description: StandSchedulePolicy declares policy for stand startup/shutdown
+          schedules
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: Spec declares schedule behavior.
+            properties:
+              resources:
+                description: Resources contains external resources spec.
+                properties:
+                  azure:
+                    description: Azure contains an array of related azure resources.
+                    items:
+                      properties:
+                        priority:
+                          description: Priority specifies order in which resources
+                            will be started or shutdowned.
+                          format: int64
+                          type: integer
+                        resourceGroupName:
+                          description: ResourceGroupName defines resource group name
+                            for resource.
+                          type: string
+                        resourceNameFilter:
+                          description: ResourceNameFilter defines regex filter for
+                            resource.
+                          type: string
+                        type:
+                          description: Type defines one of supported azure resource
+                            types.
+                          type: string
+                      required:
+                      - priority
+                      - resourceGroupName
+                      - resourceNameFilter
+                      - type
+                      type: object
+                    type: array
+                required:
+                - azure
+                type: object
+              schedule:
+                description: Schedule contains schedule spec.
+                properties:
+                  shutdown:
+                    description: Shutdown defines schedule in cron format for stand
+                      shutdown.
+                    type: string
+                  startup:
+                    description: Startup defines schedule in cron format for stand
+                      startup.
+                    type: string
+                required:
+                - shutdown
+                - startup
+                type: object
+              targetNamespaceFilter:
+                description: TargetNamespaceFilter defines regex filter to match namespaces
+                  to process.
+                type: string
+            required:
+            - resources
+            - schedule
+            - targetNamespaceFilter
+            type: object
+          status:
+            description: Status contains schedule runtime data.
+            properties:
+              conditions:
+                description: Conditions defines current service state of policy.
+                items:
+                  properties:
+                    lastTransitionTime:
+                      description: Last time the condition transitioned from one status
+                        to another.
+                      format: date-time
+                      type: string
+                    message:
+                      description: Human-readable message indicating details about
+                        last transition.
+                      type: string
+                    reason:
+                      description: Unique, one-word, CamelCase reason for the condition's
+                        last transition.
+                      type: string
+                    status:
+                      description: Status is the status of the condition. Can be True,
+                        False, Unknown.
+                      type: string
+                    type:
+                      description: Type is the type of the condition.
+                      type: string
+                  required:
+                  - status
+                  - type
+                  type: object
+                type: array
+            required:
+            - conditions
+            type: object
+        required:
+        - spec
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

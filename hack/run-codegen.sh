@@ -38,8 +38,16 @@ CLIENT_CLIENTSET_VERSIONED_PKG_NAME=versioned
 CLIENT_LISTERS_PKG="${CLIENT_PKG}/listers"
 CLIENT_INFORMERS_PKG="${CLIENT_PKG}/informers"
 
+CRDS_PATH="${SCRIPT_ROOT}/crds"
+
 # Flags that shared between various generators
 GENERATOR_FLAGS="--go-header-file ${SCRIPT_ROOT}/hack/boilerplate.go.txt"
+
+echo "Generating CRDs at ${CRDS_PATH}"
+  $CONTROLLER_GEN crd:crdVersions=v1 \
+    paths="${APIS_PKG}/v1" \
+    output:crd:artifacts:config="${CRDS_PATH}"
+  mv "${CRDS_PATH}/automation.dodois.io_standschedulepolicies.yaml" "${CRDS_PATH}/StandSchedulePolicy.yaml"
 
 echo "Generating ClientSet at ${CLIENT_CLIENTSET_PKG}"
 go run k8s.io/code-generator/cmd/client-gen \

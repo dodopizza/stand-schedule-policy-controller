@@ -81,7 +81,7 @@ const (
 // StandSchedulePolicyStatus is a status for StandSchedulePolicy resource.
 type StandSchedulePolicyStatus struct {
 	// Conditions defines current service state of policy.
-	Conditions []PolicyStatusCondition
+	Conditions []PolicyStatusCondition `json:"conditions"`
 }
 type PolicyStatusCondition struct {
 	// Type is the type of the condition.
