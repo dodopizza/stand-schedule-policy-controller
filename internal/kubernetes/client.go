@@ -3,6 +3,7 @@ package kubernetes
 import (
 	"errors"
 	"flag"
+	"os"
 	"path/filepath"
 
 	corecs "k8s.io/client-go/kubernetes"
@@ -62,6 +63,15 @@ func NewForExternalCluster() (Interface, error) {
 	flag.Parse()
 
 	cfg, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
+	if err != nil {
+		return nil, err
+	}
+	return newForConfig(cfg)
+}
+
+func NewForTest(env string) (Interface, error) {
+	kubeconfig := os.Getenv(env)
+	cfg, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		return nil, err
 	}

@@ -16,6 +16,10 @@ ifeq ($(BUILD_ARCH),x86_64)
 	BUILD_ARCH = amd64
 endif
 
+INTEGRATION_TEST_KIND_CLUSTER_NODE=v1.21.1
+INTEGRATION_TEST_CRDS=./crds/StandSchedulePolicy.yaml
+INTEGRATION_TEST_KIND_CLUSTER_CONFIG=$(shell pwd)/bin/kubeconfig.yaml
+
 .PHONY: all
 all: help
 
@@ -54,8 +58,29 @@ push-docker: build-docker ## Build app locally and push docker image
 	docker push "${DOCKER_IMAGE_REPO}:${DOCKER_IMAGE_COMMIT_SHA}"
 
 .PHONY: test
-test: ## Run all tests
-	go test -v -timeout 300s --tags=integration ./test/...
+test: test-integration ## Run all tests
+
+.PHONY: test-integration-setup
+test-integration-setup: ## Setup environment for integration tests
+	kind create cluster \
+	--name kind \
+	--image=kindest/node:$(INTEGRATION_TEST_KIND_CLUSTER_NODE) \
+	--kubeconfig "${INTEGRATION_TEST_KIND_CLUSTER_CONFIG}"
+	kubectl apply \
+	--kubeconfig "${INTEGRATION_TEST_KIND_CLUSTER_CONFIG}" \
+	--filename "${INTEGRATION_TEST_CRDS}"
+
+.PHONY: test-integration-cleanup
+test-integration-cleanup: ## Cleanup environment for integration tests
+	kind delete cluster \
+	--name kind
+
+.PHONY: test-integration
+test-integration: ## Run all integration tests
+	TEST_KUBECONFIG_PATH="${INTEGRATION_TEST_KIND_CLUSTER_CONFIG}" go test \
+	-v \
+	-timeout 300s \
+	--tags=integration ./test/...
 
 .PHONY: run
 run: build ## Run app locally
