@@ -73,15 +73,15 @@ func (c *Controller) Notify() <-chan error {
 }
 
 func (c *Controller) add(obj *apis.StandSchedulePolicy) {
-	c.logger.Debug("Added object with name", zap.String("object", obj.Name))
+	c.logger.Debug("Added policy object with name", zap.String("policy_name", obj.Name))
 }
 
 func (c *Controller) update(oldObj, newObj *apis.StandSchedulePolicy) {
-	c.logger.Debug("Updated object with name", zap.String("object", newObj.Name))
+	c.logger.Debug("Sync policy object with name", zap.String("policy_name", newObj.Name))
 }
 
 func (c *Controller) delete(obj *apis.StandSchedulePolicy) {
-	c.logger.Debug("Deleted object with name", zap.String("object", obj.Name))
+	c.logger.Debug("Deleted policy object with name", zap.String("policy_name", obj.Name))
 }
 
 func (c *Controller) handleCachesDesyncFor(name string) {
