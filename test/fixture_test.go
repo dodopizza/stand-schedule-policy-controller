@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	clock "k8s.io/utils/clock/testing"
 
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/controller"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/kubernetes"
-	"github.com/dodopizza/stand-schedule-policy-controller/pkg/clock"
 )
 
 var (
@@ -23,7 +23,7 @@ type (
 		cfg       *controller.Config
 		kube      kubernetes.Interface
 		azure     *azure
-		clock     clock.FrozenClock
+		clock     *clock.FakeClock
 		logger    *zap.Logger
 		interrupt chan struct{}
 	}
@@ -45,18 +45,12 @@ func NewFixture(t *testing.T) *fixture {
 		cfg:       &controller.Config{},
 		kube:      k,
 		azure:     &azure{},
-		clock:     clock.NewFrozenClock(_Time),
+		clock:     clock.NewFakeClock(_Time),
 		logger:    l,
 		interrupt: make(chan struct{}),
 	}
 }
 
 func (f *fixture) CreateController() *controller.Controller {
-	return controller.NewController(
-		f.kube,
-		f.azure,
-		f.logger,
-		f.cfg,
-		f.clock,
-	)
+	return controller.NewController(f.cfg, f.logger, f.clock, f.kube, f.azure)
 }

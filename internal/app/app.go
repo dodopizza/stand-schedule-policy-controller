@@ -7,13 +7,13 @@ import (
 
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"k8s.io/utils/clock"
 
 	"github.com/dodopizza/stand-schedule-policy-controller/config"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/azure"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/controller"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/http"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/kubernetes"
-	"github.com/dodopizza/stand-schedule-policy-controller/pkg/clock"
 	"github.com/dodopizza/stand-schedule-policy-controller/pkg/httpserver"
 )
 
@@ -40,7 +40,7 @@ func New(cfg *config.Config, l *zap.Logger) (*App, error) {
 	}
 
 	hs := httpserver.New(http.NewRouter(), httpserver.Port(cfg.Http.Port))
-	c := controller.NewController(k, az, l, &cfg.Controller, clock.NewRealClock())
+	c := controller.NewController(&cfg.Controller, l, clock.RealClock{}, k, az)
 
 	return &App{
 		logger:     l,
