@@ -13,6 +13,7 @@ import (
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/controller"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/http"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/kubernetes"
+	"github.com/dodopizza/stand-schedule-policy-controller/pkg/clock"
 	"github.com/dodopizza/stand-schedule-policy-controller/pkg/httpserver"
 )
 
@@ -39,7 +40,7 @@ func New(cfg *config.Config, l *zap.Logger) (*App, error) {
 	}
 
 	hs := httpserver.New(http.NewRouter(), httpserver.Port(cfg.Http.Port))
-	c := controller.NewController(k, az, l, &cfg.Controller)
+	c := controller.NewController(k, az, l, &cfg.Controller, clock.NewRealClock())
 
 	return &App{
 		logger:     l,

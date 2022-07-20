@@ -10,12 +10,14 @@ import (
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/azure"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/kubernetes"
 	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
+	"github.com/dodopizza/stand-schedule-policy-controller/pkg/clock"
 )
 
 type (
 	Controller struct {
 		notify   chan error
 		logger   *zap.Logger
+		clock    clock.Interface
 		kube     kubernetes.Interface
 		azure    azure.Interface
 		factory  *FactoryGroup
@@ -23,10 +25,17 @@ type (
 	}
 )
 
-func NewController(k kubernetes.Interface, az azure.Interface, l *zap.Logger, cfg *Config) *Controller {
+func NewController(
+	k kubernetes.Interface,
+	az azure.Interface,
+	l *zap.Logger,
+	cfg *Config,
+	clock clock.Interface,
+) *Controller {
 	c := &Controller{
 		notify: make(chan error, 1),
 		logger: l.Named("controller"),
+		clock:  clock,
 		kube:   k,
 		azure:  az,
 	}
