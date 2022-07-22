@@ -3,14 +3,17 @@
 package test
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"go.uber.org/zap"
+	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clock "k8s.io/utils/clock/testing"
 
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/controller"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/kubernetes"
+	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
 )
 
 var (
@@ -26,6 +29,15 @@ type (
 		clock     *clock.FakeClock
 		logger    *zap.Logger
 		interrupt chan struct{}
+		t         *testing.T
+		cleanup   *fixtureCleanup
+	}
+	fixtureCleanup struct {
+		t          *testing.T
+		kube       kubernetes.Interface
+		policies   map[string]struct{}
+		namespaces map[string]struct{}
+		dryRun     bool
 	}
 	azure struct{}
 )
@@ -48,9 +60,76 @@ func NewFixture(t *testing.T) *fixture {
 		clock:     clock.NewFakeClock(_Time),
 		logger:    l,
 		interrupt: make(chan struct{}),
+		t:         t,
+		cleanup:   NewFixtureCleanup(t, k),
 	}
+}
+
+func NewFixtureCleanup(t *testing.T, k kubernetes.Interface) *fixtureCleanup {
+	f := &fixtureCleanup{
+		t:          t,
+		kube:       k,
+		policies:   make(map[string]struct{}, 0),
+		namespaces: make(map[string]struct{}, 0),
+	}
+	t.Cleanup(f.Handler)
+
+	return f
+}
+
+func (f *fixture) WithPolicies(policies ...*apis.StandSchedulePolicy) *fixture {
+	for _, policy := range policies {
+		_, err := f.kube.StandSchedulesClient().
+			StandSchedulesV1().
+			StandSchedulePolicies().
+			Create(context.Background(), policy, meta.CreateOptions{})
+		if err != nil {
+			f.t.Fatal(err)
+		}
+		f.cleanup.AddPolicy(policy)
+	}
+	return f
+}
+
+func (f *fixture) WithoutCleanup() *fixture {
+	f.cleanup.dryRun = true
+	return f
 }
 
 func (f *fixture) CreateController() *controller.Controller {
 	return controller.NewController(f.cfg, f.logger, f.clock, f.kube, f.azure)
+}
+
+func (f *fixtureCleanup) AddPolicy(policy *apis.StandSchedulePolicy) {
+	f.policies[policy.Name] = struct{}{}
+}
+
+func (f *fixtureCleanup) AddNamespace(meta meta.ObjectMeta) {
+	f.namespaces[meta.GetNamespace()] = struct{}{}
+}
+
+func (f *fixtureCleanup) Handler() {
+	if f.dryRun {
+		return
+	}
+
+	for policy := range f.policies {
+		err := f.kube.StandSchedulesClient().
+			StandSchedulesV1().
+			StandSchedulePolicies().
+			Delete(context.Background(), policy, meta.DeleteOptions{})
+		if err != nil {
+			f.t.Fatal(err)
+		}
+	}
+
+	for namespace := range f.namespaces {
+		err := f.kube.CoreClient().
+			CoreV1().
+			Namespaces().
+			Delete(context.Background(), namespace, meta.DeleteOptions{})
+		if err != nil {
+			f.t.Fatal(err)
+		}
+	}
 }
