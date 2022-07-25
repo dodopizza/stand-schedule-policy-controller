@@ -63,7 +63,7 @@ func (f *fixture) AssertNamespaceEmpty(namespace string) {
 	}
 }
 
-func (f *fixture) AssertQuotaNotExists(namespace string) {
+func (f *fixture) AssertResourceQuotaNotExists(namespace string) {
 	quotaName := "zero-quota"
 	_, err := f.kube.CoreClient().
 		CoreV1().
@@ -86,7 +86,7 @@ func Test_StartController(t *testing.T) {
 	f.AssertControllerStarted(f.CreateController())
 }
 
-func Test_ShutdownPolicy(t *testing.T) {
+func Test_PolicyWithShutdown(t *testing.T) {
 	f := NewFixture(t).
 		WithNamespaces("namespace1").
 		WithPods(
@@ -113,7 +113,7 @@ func Test_ShutdownPolicy(t *testing.T) {
 				Spec: apis.StandSchedulePolicySpec{
 					TargetNamespaceFilter: "namespace1",
 					Schedule: apis.ScheduleSpec{
-						Startup:  "0 0 1 * *",
+						Startup:  "@yearly",
 						Shutdown: "* * * * *",
 					},
 					Resources: apis.ResourcesSpec{
@@ -131,7 +131,7 @@ func Test_ShutdownPolicy(t *testing.T) {
 	f.AssertNamespaceEmpty("namespace1")
 }
 
-func Test_StartupPolicy(t *testing.T) {
+func Test_PolicyWithStartup(t *testing.T) {
 	f := NewFixture(t).
 		WithNamespaces("namespace1").
 		WithZeroQuota("namespace1").
@@ -144,7 +144,7 @@ func Test_StartupPolicy(t *testing.T) {
 					TargetNamespaceFilter: "namespace1",
 					Schedule: apis.ScheduleSpec{
 						Startup:  "* * * * *",
-						Shutdown: "0 0 1 * *",
+						Shutdown: "@yearly",
 					},
 					Resources: apis.ResourcesSpec{
 						Azure: []apis.AzureResource{},
@@ -159,10 +159,10 @@ func Test_StartupPolicy(t *testing.T) {
 	f.DelayForWorkers(time.Second * 5)
 	f.IncreaseTime(time.Minute * 2)
 	f.DelayForWorkers(time.Second * 10)
-	f.AssertQuotaNotExists("namespace1")
+	f.AssertResourceQuotaNotExists("namespace1")
 }
 
-func Test_ShutdownPolicyWithOverride(t *testing.T) {
+func Test_PolicyWithShutdownOverride(t *testing.T) {
 	f := NewFixture(t).
 		WithNamespaces("namespace1").
 		WithPods(
@@ -192,8 +192,8 @@ func Test_ShutdownPolicyWithOverride(t *testing.T) {
 				Spec: apis.StandSchedulePolicySpec{
 					TargetNamespaceFilter: "namespace1",
 					Schedule: apis.ScheduleSpec{
-						Startup:  "0 0 1 * *",
-						Shutdown: "0 23 * * *",
+						Startup:  "@yearly",
+						Shutdown: "@yearly",
 					},
 					Resources: apis.ResourcesSpec{
 						Azure: []apis.AzureResource{},
@@ -208,4 +208,37 @@ func Test_ShutdownPolicyWithOverride(t *testing.T) {
 	f.IncreaseTime(time.Minute * 2)
 	f.DelayForWorkers(time.Second * 10)
 	f.AssertNamespaceEmpty("namespace1")
+}
+
+func Test_PolicyWithStartupOverride(t *testing.T) {
+	f := NewFixture(t).
+		WithNamespaces("namespace1").
+		WithZeroQuota("namespace1").
+		WithPolicies(
+			&apis.StandSchedulePolicy{
+				ObjectMeta: meta.ObjectMeta{
+					Name: "test-policy",
+					Annotations: map[string]string{
+						apis.AnnotationScheduleStartupTime: _Time.Add(time.Second * 1).Format(time.RFC3339),
+					},
+				},
+				Spec: apis.StandSchedulePolicySpec{
+					TargetNamespaceFilter: "namespace1",
+					Schedule: apis.ScheduleSpec{
+						Startup:  "@yearly",
+						Shutdown: "@yearly",
+					},
+					Resources: apis.ResourcesSpec{
+						Azure: []apis.AzureResource{},
+					},
+				},
+			},
+		)
+	c := f.CreateController()
+	f.AssertControllerStarted(c)
+
+	f.DelayForWorkers(time.Second * 5)
+	f.IncreaseTime(time.Minute * 2)
+	f.DelayForWorkers(time.Second * 10)
+	f.AssertResourceQuotaNotExists("namespace1")
 }
