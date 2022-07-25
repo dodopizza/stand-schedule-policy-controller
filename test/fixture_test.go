@@ -64,7 +64,11 @@ func NewFixture(t *testing.T) *fixture {
 	}
 
 	return &fixture{
-		cfg:       &controller.Config{},
+		cfg: &controller.Config{
+			ResyncSeconds:          10,
+			WorkerQueueThreadiness: 1,
+			WorkerQueueRetries:     5,
+		},
 		kube:      k,
 		azure:     &azure{},
 		clock:     clock.NewFakeClock(_Time),
@@ -175,8 +179,41 @@ func (f *fixture) IncreaseTime(d time.Duration) {
 	_Time = nextTime
 }
 
-func (f *fixture) DelayForWorkers(d time.Duration) {
-	time.Sleep(d)
+func (f *fixture) WaitUntilPolicyStatus(name string, ct apis.ConditionType, sht apis.ConditionScheduleType) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*3)
+	defer cancel()
+
+	ticker := time.NewTicker(time.Second * 5)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			f.t.Errorf("Deadline waiting status exceeded")
+			return
+
+		case <-ticker.C:
+			f.logger.Debug("Waiting policy status",
+				zap.String("policy_name", name),
+				zap.String("schedule_status", string(ct)),
+				zap.String("schedule_type", string(sht)))
+
+			policy, err := f.kube.StandSchedulesClient().
+				StandSchedulesV1().
+				StandSchedulePolicies().
+				Get(ctx, name, meta.GetOptions{})
+
+			if err != nil {
+				f.t.Error(err)
+			}
+
+			for _, status := range policy.Status.Conditions {
+				if status.Type == ct && status.Status == sht {
+					return
+				}
+			}
+		}
+	}
 }
 
 func (f *fixtureCleanup) AddPolicy(policy *apis.StandSchedulePolicy) {

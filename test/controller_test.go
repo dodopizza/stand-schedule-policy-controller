@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -89,22 +88,7 @@ func Test_StartController(t *testing.T) {
 func Test_PolicyWithShutdown(t *testing.T) {
 	f := NewFixture(t).
 		WithNamespaces("namespace1").
-		WithPods(
-			&core.Pod{
-				ObjectMeta: meta.ObjectMeta{
-					Name:      "test-pod-1",
-					Namespace: "namespace1",
-				},
-				Spec: core.PodSpec{
-					Containers: []core.Container{
-						{
-							Name:  "test",
-							Image: "nginx",
-						},
-					},
-				},
-			},
-		).
+		WithPods(podObject("namespace1", "test-pod-1")).
 		WithPolicies(
 			&apis.StandSchedulePolicy{
 				ObjectMeta: meta.ObjectMeta{
@@ -125,9 +109,9 @@ func Test_PolicyWithShutdown(t *testing.T) {
 	c := f.CreateController()
 	f.AssertControllerStarted(c)
 
-	f.DelayForWorkers(time.Second * 5)
+	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusShutdown)
 	f.IncreaseTime(time.Minute * 2)
-	f.DelayForWorkers(time.Second * 10)
+	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusShutdown)
 	f.AssertNamespaceEmpty("namespace1")
 }
 
@@ -156,31 +140,16 @@ func Test_PolicyWithStartup(t *testing.T) {
 	c := f.CreateController()
 	f.AssertControllerStarted(c)
 
-	f.DelayForWorkers(time.Second * 5)
+	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusStartup)
 	f.IncreaseTime(time.Minute * 2)
-	f.DelayForWorkers(time.Second * 10)
+	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusStartup)
 	f.AssertResourceQuotaNotExists("namespace1")
 }
 
 func Test_PolicyWithShutdownOverride(t *testing.T) {
 	f := NewFixture(t).
 		WithNamespaces("namespace1").
-		WithPods(
-			&core.Pod{
-				ObjectMeta: meta.ObjectMeta{
-					Name:      "test-pod-1",
-					Namespace: "namespace1",
-				},
-				Spec: core.PodSpec{
-					Containers: []core.Container{
-						{
-							Name:  "test",
-							Image: "nginx",
-						},
-					},
-				},
-			},
-		).
+		WithPods(podObject("namespace1", "test-pod-1")).
 		WithPolicies(
 			&apis.StandSchedulePolicy{
 				ObjectMeta: meta.ObjectMeta{
@@ -204,9 +173,9 @@ func Test_PolicyWithShutdownOverride(t *testing.T) {
 	c := f.CreateController()
 	f.AssertControllerStarted(c)
 
-	f.DelayForWorkers(time.Second * 5)
+	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusShutdown)
 	f.IncreaseTime(time.Minute * 2)
-	f.DelayForWorkers(time.Second * 10)
+	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusShutdown)
 	f.AssertNamespaceEmpty("namespace1")
 }
 
@@ -237,8 +206,8 @@ func Test_PolicyWithStartupOverride(t *testing.T) {
 	c := f.CreateController()
 	f.AssertControllerStarted(c)
 
-	f.DelayForWorkers(time.Second * 5)
+	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusStartup)
 	f.IncreaseTime(time.Minute * 2)
-	f.DelayForWorkers(time.Second * 10)
+	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusStartup)
 	f.AssertResourceQuotaNotExists("namespace1")
 }
