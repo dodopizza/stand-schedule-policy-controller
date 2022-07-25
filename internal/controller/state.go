@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/robfig/cron"
+	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
 )
@@ -21,8 +22,11 @@ type (
 	}
 
 	Schedule struct {
-		schedule cron.Schedule
-		override time.Time
+		schedule    cron.Schedule
+		override    time.Time
+		fireAt      time.Time
+		completedAt time.Time
+		failedAt    time.Time
 	}
 )
 
@@ -80,6 +84,40 @@ func (s *Schedule) GetNextTimeAfter(since time.Time) time.Time {
 		return s.override
 	}
 	return s.schedule.Next(since)
+}
+
+func (s *Schedule) UpdateScheduledTime(since time.Time) {
+	s.fireAt = s.GetNextTimeAfter(since)
+}
+
+func (s *Schedule) Conditions(st apis.PolicyStatusConditionStatus) []apis.PolicyStatusCondition {
+	conditions := []apis.PolicyStatusCondition{}
+
+	if !s.fireAt.IsZero() {
+		conditions = append(conditions, apis.PolicyStatusCondition{
+			Type:               apis.PolicyScheduled,
+			Status:             st,
+			LastTransitionTime: meta.NewTime(s.fireAt),
+		})
+	}
+
+	if !s.completedAt.IsZero() {
+		conditions = append(conditions, apis.PolicyStatusCondition{
+			Type:               apis.PolicyCompleted,
+			Status:             st,
+			LastTransitionTime: meta.NewTime(s.completedAt),
+		})
+	}
+
+	if !s.failedAt.IsZero() {
+		conditions = append(conditions, apis.PolicyStatusCondition{
+			Type:               apis.PolicyFailed,
+			Status:             st,
+			LastTransitionTime: meta.NewTime(s.failedAt),
+		})
+	}
+
+	return conditions
 }
 
 func (s *Schedule) Equals(other *Schedule) bool {

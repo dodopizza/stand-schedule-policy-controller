@@ -6,6 +6,8 @@ import (
 	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
 )
 
+// todo: optional startup
+
 func (c *Controller) add(obj *apis.StandSchedulePolicy) {
 	c.logger.Debug("Discovered policy object with name", zap.String("policy_name", obj.Name))
 	state, err := NewScheduleState(obj)

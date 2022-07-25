@@ -18,41 +18,46 @@ import (
 // todo: handle external resources
 // todo: combine errors
 // todo: reschedule after completion
+// todo: check workitem.fireat and schedule.fireat
 
 type (
 	WorkItem struct {
-		Type        string
-		PolicyName  string
-		ScheduledAt time.Time
-		Deadline    time.Time
+		scheduleType string
+		policyName   string
+		fireAt       time.Time
 	}
 )
+
+func (w *WorkItem) deadline() time.Time {
+	timeout := time.Minute * 30
+	return w.fireAt.Add(timeout)
+}
 
 func (c *Controller) execute(i interface{}) error {
 	now := c.clock.Now()
 	work := i.(WorkItem)
 
-	if now.Before(work.ScheduledAt) {
+	if now.Before(work.fireAt) {
 		c.logger.Warn("Skip execution of policy because of current time before scheduled",
-			zap.String("policy_name", work.PolicyName),
-			zap.String("work_type", work.Type),
+			zap.String("policy_name", work.policyName),
+			zap.String("work_type", work.scheduleType),
 			zap.Stringer("time", now),
-			zap.Stringer("scheduled_at_time", work.ScheduledAt))
+			zap.Stringer("scheduled_at_time", work.fireAt))
 		return nil
 	}
 
-	if now.After(work.Deadline) {
+	if now.After(work.deadline()) {
 		c.logger.Warn("Skip execution of policy because of current time after deadline",
-			zap.String("policy_name", work.PolicyName),
-			zap.String("work_type", work.Type),
+			zap.String("policy_name", work.policyName),
+			zap.String("work_type", work.scheduleType),
 			zap.Stringer("time", now),
-			zap.Stringer("scheduled_deadline", work.Deadline))
+			zap.Stringer("scheduled_deadline", work.deadline()))
 		return nil
 	}
 
-	policy, err := c.lister.stands.Get(work.PolicyName)
+	policy, err := c.lister.stands.Get(work.policyName)
 	if errors.IsNotFound(err) {
-		c.logger.Warn("Skip execution of policy because it not exists", zap.String("policy_name", work.PolicyName))
+		c.logger.Warn("Skip execution of policy because it not exists", zap.String("policy_name", work.policyName))
 		return nil
 	}
 
@@ -61,10 +66,10 @@ func (c *Controller) execute(i interface{}) error {
 	}
 
 	c.logger.Info("Run execution of policy",
-		zap.String("policy_name", work.PolicyName),
-		zap.String("work_type", work.Type))
+		zap.String("policy_name", work.policyName),
+		zap.String("work_type", work.scheduleType))
 
-	switch work.Type {
+	switch work.scheduleType {
 	case "startup":
 		return c.executeStartup(policy)
 	case "shutdown":
@@ -72,13 +77,17 @@ func (c *Controller) execute(i interface{}) error {
 	}
 
 	c.logger.Warn("Invalid work type found for policy",
-		zap.String("policy_name", work.PolicyName),
-		zap.String("work_type", work.Type))
+		zap.String("policy_name", work.policyName),
+		zap.String("work_type", work.scheduleType))
 	return nil
 }
 
 func (c *Controller) executeShutdown(policy *apis.StandSchedulePolicy) error {
-	namespaces := c.filterNamespaces(policy.Spec.TargetNamespaceFilter)
+	namespaces, err := c.filterNamespaces(policy.Spec.TargetNamespaceFilter)
+	if err != nil {
+		c.logger.Warn("Failed to list target namespaces", zap.Error(err))
+		return err
+	}
 
 	for _, namespace := range namespaces {
 		quota := &core.ResourceQuota{
@@ -134,7 +143,11 @@ func (c *Controller) executeShutdown(policy *apis.StandSchedulePolicy) error {
 }
 
 func (c *Controller) executeStartup(policy *apis.StandSchedulePolicy) error {
-	namespaces := c.filterNamespaces(policy.Spec.TargetNamespaceFilter)
+	namespaces, err := c.filterNamespaces(policy.Spec.TargetNamespaceFilter)
+	if err != nil {
+		c.logger.Warn("Failed to list target namespaces", zap.Error(err))
+		return err
+	}
 
 	for _, namespace := range namespaces {
 		err := c.kube.CoreClient().
@@ -157,12 +170,12 @@ func (c *Controller) executeStartup(policy *apis.StandSchedulePolicy) error {
 	return nil
 }
 
-func (c *Controller) filterNamespaces(filter string) []string {
+func (c *Controller) filterNamespaces(filter string) ([]string, error) {
 	result := []string{}
 
 	namespaces, err := c.lister.ns.List(labels.Everything())
 	if err != nil {
-		return result
+		return result, err
 	}
 
 	for _, namespace := range namespaces {
@@ -177,5 +190,5 @@ func (c *Controller) filterNamespaces(filter string) []string {
 		}
 	}
 
-	return result
+	return result, nil
 }

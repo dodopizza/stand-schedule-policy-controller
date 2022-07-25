@@ -1,10 +1,14 @@
 package controller
 
 import (
+	"context"
 	"time"
 
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/errors"
+	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
 )
 
 func (c *Controller) reconcile(i interface{}) error {
@@ -15,15 +19,30 @@ func (c *Controller) reconcile(i interface{}) error {
 		return nil
 	}
 
-	_, exists := c.state.Get(policy.Name)
+	state, exists := c.state.Get(policy.Name)
 	if !exists {
 		c.logger.Info("Deleted policy with name removed from execution", zap.String("policy_name", policy.Name))
 		return nil
 	}
 
-	// todo: update status
+	c.logger.Info("Update policy status", zap.String("policy_name", policy.Name))
+	conditions := []apis.PolicyStatusCondition{}
+	conditions = append(conditions, state.startup.Conditions(apis.ScheduleStartup)...)
+	conditions = append(conditions, state.shutdown.Conditions(apis.ScheduleShutdown)...)
+	policy.Status.Conditions = conditions
 
-	return nil
+	_, err = c.kube.StandSchedulesClient().
+		StandSchedulesV1().
+		StandSchedulePolicies().
+		UpdateStatus(context.Background(), policy, meta.UpdateOptions{})
+
+	if err != nil {
+		c.logger.Error("Failed to update policy status",
+			zap.String("policy_name", policy.Name),
+			zap.Error(err))
+	}
+
+	return err
 }
 
 func (c *Controller) schedule(
@@ -41,16 +60,16 @@ func (c *Controller) scheduleWorkItem(
 	scheduleType string,
 	schedule *Schedule,
 ) {
-	next := schedule.GetNextTimeAfter(since)
+	schedule.UpdateScheduledTime(since)
 
 	c.logger.Info("Schedule policy with name at time (since)",
 		zap.String("policy_name", policyName),
 		zap.String("schedule_type", scheduleType),
 		zap.Stringer("since", since),
-		zap.Stringer("at", next),
+		zap.Stringer("at", schedule.fireAt),
 	)
 
-	if next.IsZero() {
+	if schedule.fireAt.IsZero() {
 		c.logger.Error("Failed to schedule policy after time with error",
 			zap.String("policy_name", policyName),
 			zap.String("schedule_type", scheduleType),
@@ -59,11 +78,10 @@ func (c *Controller) scheduleWorkItem(
 	}
 
 	item := WorkItem{
-		PolicyName:  policyName,
-		Type:        scheduleType,
-		ScheduledAt: next,
-		Deadline:    next.Add(30 * time.Minute),
+		policyName:   policyName,
+		scheduleType: scheduleType,
+		fireAt:       schedule.fireAt,
 	}
 
-	c.executor.EnqueueAfter(item, next.Sub(since))
+	c.executor.EnqueueAfter(item, schedule.fireAt.Sub(since))
 }
