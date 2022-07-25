@@ -11,7 +11,7 @@ import (
 )
 
 type ConditionType string
-type ConditionStatus string
+type ConditionScheduleType string
 
 const (
 	// ConditionScheduled means that policy actions are in progress.
@@ -24,23 +24,23 @@ const (
 
 const (
 	// StatusStartup means that current status for startup operation
-	StatusStartup ConditionStatus = "Startup"
+	StatusStartup ConditionScheduleType = "Startup"
 	// StatusShutdown means that current status for shutdown operation
-	StatusShutdown ConditionStatus = "Shutdown"
+	StatusShutdown ConditionScheduleType = "Shutdown"
 )
 
 // StandSchedulePolicyStatus is a status for StandSchedulePolicy resource.
 type StandSchedulePolicyStatus struct {
 	// Conditions defines current service state of policy.
-	Conditions []PolicyStatusCondition `json:"conditions"`
+	Conditions []StatusCondition `json:"conditions"`
 }
 
-type PolicyStatusCondition struct {
+type StatusCondition struct {
 	// Type is the type of the condition.
 	Type ConditionType `json:"type"`
 	// Status is the status of the condition.
-	// Can be StatusStartup or StatusShutdown
-	Status ConditionStatus `json:"status"`
+	// Can be Startup or Shutdown.
+	Status ConditionScheduleType `json:"status"`
 	// Last time the condition transitioned from one status to another.
 	// +optional
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`

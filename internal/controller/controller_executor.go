@@ -22,8 +22,8 @@ import (
 
 type (
 	WorkItem struct {
-		scheduleType string
 		policyName   string
+		scheduleType apis.ConditionScheduleType
 		fireAt       time.Time
 	}
 )
@@ -40,7 +40,7 @@ func (c *Controller) execute(i interface{}) error {
 	if now.Before(work.fireAt) {
 		c.logger.Warn("Skip execution of policy because of current time before scheduled",
 			zap.String("policy_name", work.policyName),
-			zap.String("work_type", work.scheduleType),
+			zap.String("schedule_type", string(work.scheduleType)),
 			zap.Stringer("time", now),
 			zap.Stringer("scheduled_at_time", work.fireAt))
 		return nil
@@ -49,7 +49,7 @@ func (c *Controller) execute(i interface{}) error {
 	if now.After(work.deadline()) {
 		c.logger.Warn("Skip execution of policy because of current time after deadline",
 			zap.String("policy_name", work.policyName),
-			zap.String("work_type", work.scheduleType),
+			zap.String("schedule_type", string(work.scheduleType)),
 			zap.Stringer("time", now),
 			zap.Stringer("scheduled_deadline", work.deadline()))
 		return nil
@@ -67,19 +67,13 @@ func (c *Controller) execute(i interface{}) error {
 
 	c.logger.Info("Run execution of policy",
 		zap.String("policy_name", work.policyName),
-		zap.String("work_type", work.scheduleType))
+		zap.String("schedule_type", string(work.scheduleType)))
 
-	switch work.scheduleType {
-	case "startup":
+	if work.scheduleType == apis.StatusStartup {
 		return c.executeStartup(policy)
-	case "shutdown":
+	} else {
 		return c.executeShutdown(policy)
 	}
-
-	c.logger.Warn("Invalid work type found for policy",
-		zap.String("policy_name", work.policyName),
-		zap.String("work_type", work.scheduleType))
-	return nil
 }
 
 func (c *Controller) executeShutdown(policy *apis.StandSchedulePolicy) error {

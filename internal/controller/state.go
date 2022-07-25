@@ -77,8 +77,8 @@ func (s *ScheduleState) IsScheduleEquals(other *ScheduleState) bool {
 	return s.startup.Equals(other.startup) && s.shutdown.Equals(other.shutdown)
 }
 
-func (s *ScheduleState) Conditions() []apis.PolicyStatusCondition {
-	conditions := []apis.PolicyStatusCondition{}
+func (s *ScheduleState) Conditions() []apis.StatusCondition {
+	conditions := []apis.StatusCondition{}
 	conditions = append(conditions, s.startup.Conditions(apis.StatusStartup)...)
 	conditions = append(conditions, s.shutdown.Conditions(apis.StatusShutdown)...)
 	return conditions
@@ -90,6 +90,7 @@ func (s *Schedule) GetNextTimeAfter(since time.Time) time.Time {
 	if s.override.After(since) {
 		return s.override
 	}
+
 	return s.schedule.Next(since)
 }
 
@@ -107,11 +108,11 @@ func (s *Schedule) SetFailed(t time.Time) {
 	s.completedAt = time.Time{}
 }
 
-func (s *Schedule) Conditions(st apis.ConditionStatus) []apis.PolicyStatusCondition {
-	conditions := []apis.PolicyStatusCondition{}
+func (s *Schedule) Conditions(st apis.ConditionScheduleType) []apis.StatusCondition {
+	conditions := []apis.StatusCondition{}
 
 	if !s.fireAt.IsZero() {
-		conditions = append(conditions, apis.PolicyStatusCondition{
+		conditions = append(conditions, apis.StatusCondition{
 			Type:               apis.ConditionScheduled,
 			Status:             st,
 			LastTransitionTime: meta.NewTime(s.fireAt),
@@ -119,7 +120,7 @@ func (s *Schedule) Conditions(st apis.ConditionStatus) []apis.PolicyStatusCondit
 	}
 
 	if !s.completedAt.IsZero() {
-		conditions = append(conditions, apis.PolicyStatusCondition{
+		conditions = append(conditions, apis.StatusCondition{
 			Type:               apis.ConditionCompleted,
 			Status:             st,
 			LastTransitionTime: meta.NewTime(s.completedAt),
@@ -127,7 +128,7 @@ func (s *Schedule) Conditions(st apis.ConditionStatus) []apis.PolicyStatusCondit
 	}
 
 	if !s.failedAt.IsZero() {
-		conditions = append(conditions, apis.PolicyStatusCondition{
+		conditions = append(conditions, apis.StatusCondition{
 			Type:               apis.ConditionFailed,
 			Status:             st,
 			LastTransitionTime: meta.NewTime(s.failedAt),

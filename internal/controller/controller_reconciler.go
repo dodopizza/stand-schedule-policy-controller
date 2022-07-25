@@ -7,6 +7,8 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
 )
 
 func (c *Controller) reconcile(i interface{}) error {
@@ -45,32 +47,31 @@ func (c *Controller) schedule(
 	policyName string,
 	scheduleState *ScheduleState,
 ) {
-	c.scheduleWorkItem(since, policyName, "shutdown", scheduleState.shutdown)
-	c.scheduleWorkItem(since, policyName, "startup", scheduleState.startup)
+	c.scheduleWorkItem(since, policyName, apis.StatusShutdown, scheduleState.shutdown)
+	c.scheduleWorkItem(since, policyName, apis.StatusShutdown, scheduleState.startup)
 }
 
 func (c *Controller) scheduleWorkItem(
 	since time.Time,
 	policyName string,
-	scheduleType string,
+	scheduleType apis.ConditionScheduleType,
 	schedule *Schedule,
 ) {
 	schedule.SetFiredSince(since)
 
-	c.logger.Info("Schedule policy with name at time (since)",
-		zap.String("policy_name", policyName),
-		zap.String("schedule_type", scheduleType),
-		zap.Stringer("since", since),
-		zap.Stringer("at", schedule.fireAt),
-	)
-
 	if schedule.fireAt.IsZero() {
-		c.logger.Error("Failed to schedule policy after time with error",
+		c.logger.Error("Failed to schedule policy",
 			zap.String("policy_name", policyName),
-			zap.String("schedule_type", scheduleType),
-			zap.Stringer("since", since),
-		)
+			zap.String("schedule_type", string(scheduleType)),
+			zap.Stringer("since", since))
+		return
 	}
+
+	c.logger.Info("Schedule policy",
+		zap.String("policy_name", policyName),
+		zap.String("schedule_type", string(scheduleType)),
+		zap.Stringer("since", since),
+		zap.Stringer("at", schedule.fireAt))
 
 	item := WorkItem{
 		policyName:   policyName,
