@@ -56,8 +56,8 @@ func NewController(
 			DeleteFunc: c.delete,
 		},
 	)
-	c.reconciler = worker.New(cfg.GetWorkerConfig(), c.logger.Named("reconciler"), c.clock, c.reconcile)
-	c.executor = worker.New(cfg.GetWorkerConfig(), c.logger.Named("executor"), c.clock, c.execute)
+	c.reconciler = worker.New(cfg.GetWorkerConfig("reconciler"), c.logger.Named("reconciler"), c.clock, c.reconcile)
+	c.executor = worker.New(cfg.GetWorkerConfig("executor"), c.logger.Named("executor"), c.clock, c.execute)
 	return c
 }
 

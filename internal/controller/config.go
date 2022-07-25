@@ -16,12 +16,13 @@ type (
 
 const (
 	_DefaultResyncSeconds      = 300 // 5 min
+	_MinResyncSeconds          = 10
 	_DefaultWorkerQueueRetries = 5
-	_DefaultWorkerQueueName    = "stand-schedule-policy-controller"
+	_MinWorkerQueueRetries     = 1
 )
 
 func (c *Config) GetResyncDuration() time.Duration {
-	if c.ResyncSeconds < _DefaultResyncSeconds {
+	if c.ResyncSeconds < _MinResyncSeconds {
 		return time.Duration(_DefaultResyncSeconds) * time.Second
 	}
 	return time.Duration(c.ResyncSeconds) * time.Second
@@ -35,15 +36,15 @@ func (c *Config) GetThreadiness() int {
 }
 
 func (c *Config) GetWorkerQueueRetries() int {
-	if c.WorkerQueueRetries < 1 {
+	if c.WorkerQueueRetries < _MinWorkerQueueRetries {
 		return _DefaultWorkerQueueRetries
 	}
 	return c.WorkerQueueRetries
 }
 
-func (c *Config) GetWorkerConfig() *worker.Config {
+func (c *Config) GetWorkerConfig(name string) *worker.Config {
 	return &worker.Config{
-		Name:        _DefaultWorkerQueueName,
+		Name:        name,
 		Retries:     c.GetWorkerQueueRetries(),
 		Threadiness: c.GetThreadiness(),
 	}
