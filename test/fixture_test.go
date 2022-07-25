@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clock "k8s.io/utils/clock/testing"
 
@@ -77,6 +78,38 @@ func NewFixtureCleanup(t *testing.T, k kubernetes.Interface) *fixtureCleanup {
 	return f
 }
 
+func (f *fixture) WithNamespaces(namespaces ...string) *fixture {
+	for _, ns := range namespaces {
+		namespace := &core.Namespace{
+			ObjectMeta: meta.ObjectMeta{
+				Name: ns,
+			},
+		}
+		_, err := f.kube.CoreClient().
+			CoreV1().
+			Namespaces().
+			Create(context.Background(), namespace, meta.CreateOptions{})
+		if err != nil {
+			f.t.Fatal(err)
+		}
+		f.cleanup.AddNamespace(namespace)
+	}
+	return f
+}
+
+func (f *fixture) WithPods(pods ...*core.Pod) *fixture {
+	for _, pod := range pods {
+		_, err := f.kube.CoreClient().
+			CoreV1().
+			Pods(pod.Namespace).
+			Create(context.Background(), pod, meta.CreateOptions{})
+		if err != nil {
+			f.t.Fatal(err)
+		}
+	}
+	return f
+}
+
 func (f *fixture) WithPolicies(policies ...*apis.StandSchedulePolicy) *fixture {
 	for _, policy := range policies {
 		_, err := f.kube.StandSchedulesClient().
@@ -100,12 +133,25 @@ func (f *fixture) CreateController() *controller.Controller {
 	return controller.NewController(f.cfg, f.logger, f.clock, f.kube, f.azure)
 }
 
+func (f *fixture) IncreaseTime(d time.Duration) {
+	nextTime := _Time.Add(d)
+	f.logger.Info("Increase controller time",
+		zap.Stringer("from", _Time),
+		zap.Stringer("to", nextTime))
+	f.clock.SetTime(nextTime)
+	_Time = nextTime
+}
+
+func (f *fixture) DelayForWorkers(d time.Duration) {
+	time.Sleep(d)
+}
+
 func (f *fixtureCleanup) AddPolicy(policy *apis.StandSchedulePolicy) {
 	f.policies[policy.Name] = struct{}{}
 }
 
-func (f *fixtureCleanup) AddNamespace(meta meta.ObjectMeta) {
-	f.namespaces[meta.GetNamespace()] = struct{}{}
+func (f *fixtureCleanup) AddNamespace(namespace *core.Namespace) {
+	f.namespaces[namespace.Name] = struct{}{}
 }
 
 func (f *fixtureCleanup) Handler() {

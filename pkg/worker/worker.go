@@ -6,13 +6,12 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
-	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/utils/clock"
 )
 
 type (
-	ReconcileFunc func(key string) error
+	ReconcileFunc func(key interface{}) error
 	Config        struct {
 		Name        string
 		Retries     int
@@ -54,16 +53,12 @@ func (w *Worker) Shutdown() {
 	w.queue.ShutDown()
 }
 
-func (w *Worker) Enqueue(obj interface{}) {
-	key, err := cache.DeletionHandlingMetaNamespaceKeyFunc(obj)
-	if err != nil {
-		return
-	}
-	w.queue.Add(key)
+func (w *Worker) Enqueue(item interface{}) {
+	w.queue.Add(item)
 }
 
-func (w *Worker) GetQueue() workqueue.DelayingInterface {
-	return w.queue
+func (w *Worker) EnqueueAfter(item interface{}, duration time.Duration) {
+	w.queue.AddAfter(item, duration)
 }
 
 func (w *Worker) process() {
@@ -79,7 +74,7 @@ func (w *Worker) next() bool {
 
 	defer w.queue.Done(key)
 
-	err := w.reconcile(key.(string))
+	err := w.reconcile(key)
 	if err == nil {
 		w.rateLimiter.Forget(key)
 		return true

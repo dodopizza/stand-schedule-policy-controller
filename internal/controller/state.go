@@ -12,51 +12,85 @@ import (
 type (
 	State struct {
 		lock sync.Mutex
-		data map[string]*ScheduleInfo
+		data map[string]*ScheduleState
 	}
 
-	ScheduleInfo struct {
-		startupSchedule  cron.Schedule
-		startupOverride  time.Time
-		shutdownSchedule cron.Schedule
-		shutdownOverride time.Time
+	ScheduleState struct {
+		startup  *Schedule
+		shutdown *Schedule
+	}
+
+	Schedule struct {
+		schedule cron.Schedule
+		override time.Time
 	}
 )
 
 func NewControllerState() *State {
 	return &State{
-		data: make(map[string]*ScheduleInfo),
+		data: make(map[string]*ScheduleState),
 	}
 }
 
-func NewScheduleInfo(policy *apis.StandSchedulePolicy) (*ScheduleInfo, error) {
-	startupSchedule, err := cron.ParseStandard(policy.Spec.Schedule.Startup)
+func NewScheduleState(policy *apis.StandSchedulePolicy) (*ScheduleState, error) {
+	startup, err := NewSchedule(
+		policy.Spec.Schedule.Startup,
+		policy.ObjectMeta.Annotations[apis.AnnotationScheduleStartupTime],
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	shutdownSchedule, err := cron.ParseStandard(policy.Spec.Schedule.Shutdown)
+	shutdown, err := NewSchedule(
+		policy.Spec.Schedule.Shutdown,
+		policy.ObjectMeta.Annotations[apis.AnnotationScheduleShutdownTime],
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	startupOverride, _ := time.Parse(time.RFC3339, policy.Annotations[apis.AnnotationScheduleStartupTime])
-	shutdownOverride, _ := time.Parse(time.RFC3339, policy.Annotations[apis.AnnotationScheduleShutdownTime])
-
-	return &ScheduleInfo{
-		startupSchedule:  startupSchedule,
-		startupOverride:  startupOverride,
-		shutdownSchedule: shutdownSchedule,
-		shutdownOverride: shutdownOverride,
+	return &ScheduleState{
+		startup:  startup,
+		shutdown: shutdown,
 	}, nil
 }
 
-func (s *State) AddOrUpdate(key string, info *ScheduleInfo) {
+func NewSchedule(schedule, override string) (*Schedule, error) {
+	sc, err := cron.ParseStandard(schedule)
+	if err != nil {
+		return nil, err
+	}
+
+	ov, _ := time.Parse(time.RFC3339, override)
+
+	return &Schedule{
+		schedule: sc,
+		override: ov,
+	}, nil
+}
+
+func (s *Schedule) GetNextTimeAfter(since time.Time) time.Time {
+	// todo: store when override expires ?
+
+	if s.override.After(since) {
+		return s.override
+	}
+	return s.schedule.Next(since)
+}
+
+func (s *State) AddOrUpdate(key string, info *ScheduleState) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	// todo: notifications
 	s.data[key] = info
+}
+
+func (s *State) Get(key string) (*ScheduleState, bool) {
+	s.lock.Lock()
+	defer s.lock.Unlock()
+
+	v, exists := s.data[key]
+	return v, exists
 }
 
 func (s *State) Delete(key string) {
