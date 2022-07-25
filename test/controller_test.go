@@ -115,3 +115,53 @@ func Test_ShutdownPolicy(t *testing.T) {
 	f.DelayForWorkers(time.Second * 10)
 	f.AssertNamespaceEmpty("namespace1")
 }
+
+func Test_ShutdownPolicyWithOverride(t *testing.T) {
+	f := NewFixture(t).
+		WithNamespaces(
+			"namespace1",
+		).
+		WithPods(
+			&core.Pod{
+				ObjectMeta: meta.ObjectMeta{
+					Name:      "test-pod-1",
+					Namespace: "namespace1",
+				},
+				Spec: core.PodSpec{
+					Containers: []core.Container{
+						{
+							Name:  "test",
+							Image: "nginx",
+						},
+					},
+				},
+			},
+		).
+		WithPolicies(
+			&apis.StandSchedulePolicy{
+				ObjectMeta: meta.ObjectMeta{
+					Name: "test-policy",
+					Annotations: map[string]string{
+						apis.AnnotationScheduleShutdownTime: _Time.Add(time.Second * 1).Format(time.RFC3339),
+					},
+				},
+				Spec: apis.StandSchedulePolicySpec{
+					TargetNamespaceFilter: "namespace1",
+					Schedule: apis.ScheduleSpec{
+						Startup:  "* * * * *",
+						Shutdown: "0 23 * * *",
+					},
+					Resources: apis.ResourcesSpec{
+						Azure: []apis.AzureResource{},
+					},
+				},
+			},
+		)
+	c := f.CreateController()
+	f.AssertControllerStarted(c)
+
+	f.DelayForWorkers(time.Second * 5)
+	f.IncreaseTime(time.Minute * 2)
+	f.DelayForWorkers(time.Second * 10)
+	f.AssertNamespaceEmpty("namespace1")
+}
