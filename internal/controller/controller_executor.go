@@ -18,7 +18,6 @@ import (
 // todo: handle external resources
 // todo: combine errors
 // todo: reschedule after completion
-// todo: managed by references for quota
 
 type (
 	WorkItem struct {
@@ -86,6 +85,14 @@ func (c *Controller) executeShutdown(policy *apis.StandSchedulePolicy) error {
 			ObjectMeta: meta.ObjectMeta{
 				Name:      "zero-quota",
 				Namespace: namespace,
+				OwnerReferences: []meta.OwnerReference{
+					{
+						APIVersion: apis.GroupVersion.String(),
+						Kind:       "StandSchedulePolicy",
+						Name:       policy.Name,
+						UID:        policy.UID,
+					},
+				},
 			},
 			Spec: core.ResourceQuotaSpec{
 				Hard: core.ResourceList{
