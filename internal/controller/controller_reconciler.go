@@ -7,8 +7,6 @@ import (
 	"go.uber.org/zap"
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
 )
 
 func (c *Controller) reconcile(i interface{}) error {
@@ -26,10 +24,7 @@ func (c *Controller) reconcile(i interface{}) error {
 	}
 
 	c.logger.Info("Update policy status", zap.String("policy_name", policy.Name))
-	conditions := []apis.PolicyStatusCondition{}
-	conditions = append(conditions, state.startup.Conditions(apis.ScheduleStartup)...)
-	conditions = append(conditions, state.shutdown.Conditions(apis.ScheduleShutdown)...)
-	policy.Status.Conditions = conditions
+	policy.Status.Conditions = state.Conditions()
 
 	_, err = c.kube.StandSchedulesClient().
 		StandSchedulesV1().
@@ -60,7 +55,7 @@ func (c *Controller) scheduleWorkItem(
 	scheduleType string,
 	schedule *Schedule,
 ) {
-	schedule.UpdateScheduledTime(since)
+	schedule.SetFiredSince(since)
 
 	c.logger.Info("Schedule policy with name at time (since)",
 		zap.String("policy_name", policyName),

@@ -10,23 +10,23 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type PolicyStatusConditionType string
-type PolicyStatusConditionStatus string
+type ConditionType string
+type ConditionStatus string
 
 const (
-	// PolicyScheduled means that policy actions are in progress.
-	PolicyScheduled PolicyStatusConditionType = "Scheduled"
-	// PolicyCompleted means that policy actions completed and successful.
-	PolicyCompleted PolicyStatusConditionType = "Completed"
-	// PolicyFailed means that policy actions completed and failed.
-	PolicyFailed PolicyStatusConditionType = "Failed"
+	// ConditionScheduled means that policy actions are in progress.
+	ConditionScheduled ConditionType = "Scheduled"
+	// ConditionCompleted means that policy actions completed and successful.
+	ConditionCompleted ConditionType = "Completed"
+	// ConditionFailed means that policy actions completed and failed.
+	ConditionFailed ConditionType = "Failed"
 )
 
 const (
-	// ScheduleStartup means that current status for startup operation
-	ScheduleStartup PolicyStatusConditionStatus = "startup"
-	// ScheduleShutdown means that current status for shutdown operation
-	ScheduleShutdown PolicyStatusConditionStatus = "shutdown"
+	// StatusStartup means that current status for startup operation
+	StatusStartup ConditionStatus = "Startup"
+	// StatusShutdown means that current status for shutdown operation
+	StatusShutdown ConditionStatus = "Shutdown"
 )
 
 // StandSchedulePolicyStatus is a status for StandSchedulePolicy resource.
@@ -37,10 +37,10 @@ type StandSchedulePolicyStatus struct {
 
 type PolicyStatusCondition struct {
 	// Type is the type of the condition.
-	Type PolicyStatusConditionType `json:"type"`
+	Type ConditionType `json:"type"`
 	// Status is the status of the condition.
-	// Can be Startup or Shutdown
-	Status PolicyStatusConditionStatus `json:"status"`
+	// Can be StatusStartup or StatusShutdown
+	Status ConditionStatus `json:"status"`
 	// Last time the condition transitioned from one status to another.
 	// +optional
 	LastTransitionTime metav1.Time `json:"lastTransitionTime,omitempty"`

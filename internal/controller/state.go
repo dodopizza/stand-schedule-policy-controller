@@ -77,6 +77,13 @@ func (s *ScheduleState) IsScheduleEquals(other *ScheduleState) bool {
 	return s.startup.Equals(other.startup) && s.shutdown.Equals(other.shutdown)
 }
 
+func (s *ScheduleState) Conditions() []apis.PolicyStatusCondition {
+	conditions := []apis.PolicyStatusCondition{}
+	conditions = append(conditions, s.startup.Conditions(apis.StatusStartup)...)
+	conditions = append(conditions, s.shutdown.Conditions(apis.StatusShutdown)...)
+	return conditions
+}
+
 func (s *Schedule) GetNextTimeAfter(since time.Time) time.Time {
 	// todo: store when override expires ?
 
@@ -86,16 +93,26 @@ func (s *Schedule) GetNextTimeAfter(since time.Time) time.Time {
 	return s.schedule.Next(since)
 }
 
-func (s *Schedule) UpdateScheduledTime(since time.Time) {
+func (s *Schedule) SetFiredSince(since time.Time) {
 	s.fireAt = s.GetNextTimeAfter(since)
 }
 
-func (s *Schedule) Conditions(st apis.PolicyStatusConditionStatus) []apis.PolicyStatusCondition {
+func (s *Schedule) SetCompleted(t time.Time) {
+	s.completedAt = t
+	s.failedAt = time.Time{}
+}
+
+func (s *Schedule) SetFailed(t time.Time) {
+	s.failedAt = t
+	s.completedAt = time.Time{}
+}
+
+func (s *Schedule) Conditions(st apis.ConditionStatus) []apis.PolicyStatusCondition {
 	conditions := []apis.PolicyStatusCondition{}
 
 	if !s.fireAt.IsZero() {
 		conditions = append(conditions, apis.PolicyStatusCondition{
-			Type:               apis.PolicyScheduled,
+			Type:               apis.ConditionScheduled,
 			Status:             st,
 			LastTransitionTime: meta.NewTime(s.fireAt),
 		})
@@ -103,7 +120,7 @@ func (s *Schedule) Conditions(st apis.PolicyStatusConditionStatus) []apis.Policy
 
 	if !s.completedAt.IsZero() {
 		conditions = append(conditions, apis.PolicyStatusCondition{
-			Type:               apis.PolicyCompleted,
+			Type:               apis.ConditionCompleted,
 			Status:             st,
 			LastTransitionTime: meta.NewTime(s.completedAt),
 		})
@@ -111,7 +128,7 @@ func (s *Schedule) Conditions(st apis.PolicyStatusConditionStatus) []apis.Policy
 
 	if !s.failedAt.IsZero() {
 		conditions = append(conditions, apis.PolicyStatusCondition{
-			Type:               apis.PolicyFailed,
+			Type:               apis.ConditionFailed,
 			Status:             st,
 			LastTransitionTime: meta.NewTime(s.failedAt),
 		})
