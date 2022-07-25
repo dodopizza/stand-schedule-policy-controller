@@ -16,13 +16,8 @@ func (c *Controller) add(obj *apis.StandSchedulePolicy) {
 
 	c.logger.Info("Added policy object with name", zap.String("policy_name", obj.Name))
 	c.state.AddOrUpdate(obj.Name, state)
+	c.schedule(c.clock.Now(), obj.Name, state)
 	c.reconciler.Enqueue(obj.Name)
-
-	if err := c.schedule(c.clock.Now(), obj.Name, state); err != nil {
-		c.logger.Error("Failed to schedule policy with name",
-			zap.String("policy_name", obj.Name),
-			zap.Error(err))
-	}
 }
 
 func (c *Controller) update(oldObj, newObj *apis.StandSchedulePolicy) {
@@ -38,18 +33,12 @@ func (c *Controller) update(oldObj, newObj *apis.StandSchedulePolicy) {
 		return
 	}
 
-	if oldState.IsScheduleEquals(newState) {
-		c.reconciler.Enqueue(newObj.Name)
-		return
+	if !oldState.IsScheduleEquals(newState) {
+		c.state.AddOrUpdate(newObj.Name, newState)
+		c.schedule(c.clock.Now(), newObj.Name, newState)
 	}
 
-	c.state.AddOrUpdate(newObj.Name, newState)
-
-	if err := c.schedule(c.clock.Now(), newObj.Name, newState); err != nil {
-		c.logger.Error("Failed to schedule policy with name",
-			zap.String("policy_name", newObj.Name),
-			zap.Error(err))
-	}
+	c.reconciler.Enqueue(newObj.Name)
 }
 
 func (c *Controller) delete(obj *apis.StandSchedulePolicy) {

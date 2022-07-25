@@ -4,27 +4,24 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	"k8s.io/apimachinery/pkg/api/errors"
 )
 
 func (c *Controller) reconcile(i interface{}) error {
-	// todo: update status
+	policy, err := c.lister.stands.Get(i.(string))
 
-	//since := c.clock.Now()
-	//
-	//policy, err := c.lister.stands.Get(i.(string))
-	//if errors.IsNotFound(err) {
-	//	c.logger.Info("Deleted policy with name removed from execution", zap.String("policy_name", policy.Name))
-	//	return nil
-	//}
-	//
-	//scheduleState, exists := c.state.Get(policy.Name)
-	//if !exists {
-	//	c.logger.Info("Deleted policy with name removed from execution", zap.String("policy_name", policy.Name))
-	//	return nil
-	//}
-	//
-	//
-	//return c.schedule(since, policy.Name, scheduleState)
+	if errors.IsNotFound(err) {
+		c.logger.Info("Deleted policy with name removed from execution", zap.String("policy_name", i.(string)))
+		return nil
+	}
+
+	_, exists := c.state.Get(policy.Name)
+	if !exists {
+		c.logger.Info("Deleted policy with name removed from execution", zap.String("policy_name", policy.Name))
+		return nil
+	}
+
+	// todo: update status
 
 	return nil
 }
@@ -33,13 +30,22 @@ func (c *Controller) schedule(
 	since time.Time,
 	policyName string,
 	scheduleState *ScheduleState,
-) error {
-	// todo: schedule startup
+) {
+	c.scheduleWorkItem(since, policyName, "shutdown", scheduleState.shutdown)
+	c.scheduleWorkItem(since, policyName, "startup", scheduleState.startup)
+}
 
-	next := scheduleState.shutdown.GetNextTimeAfter(since)
+func (c *Controller) scheduleWorkItem(
+	since time.Time,
+	policyName string,
+	scheduleType string,
+	schedule *Schedule,
+) {
+	next := schedule.GetNextTimeAfter(since)
 
 	c.logger.Info("Schedule policy with name at time (since)",
 		zap.String("policy_name", policyName),
+		zap.String("schedule_type", scheduleType),
 		zap.Stringer("since", since),
 		zap.Stringer("at", next),
 	)
@@ -47,18 +53,17 @@ func (c *Controller) schedule(
 	if next.IsZero() {
 		c.logger.Error("Failed to schedule policy after time with error",
 			zap.String("policy_name", policyName),
+			zap.String("schedule_type", scheduleType),
 			zap.Stringer("since", since),
 		)
-		return nil
 	}
 
 	item := WorkItem{
 		PolicyName:  policyName,
-		Type:        "shutdown",
+		Type:        scheduleType,
 		ScheduledAt: next,
 		Deadline:    next.Add(30 * time.Minute),
 	}
-	c.executor.EnqueueAfter(item, next.Sub(since))
 
-	return nil
+	c.executor.EnqueueAfter(item, next.Sub(since))
 }

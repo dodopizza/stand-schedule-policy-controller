@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
-	v1 "k8s.io/api/core/v1"
+	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/resource"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,10 +15,10 @@ import (
 	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
 )
 
-// todo: update status
 // todo: handle external resources
 // todo: combine errors
 // todo: reschedule after completion
+// todo: managed by references for quota
 
 type (
 	WorkItem struct {
@@ -82,14 +82,14 @@ func (c *Controller) executeShutdown(policy *apis.StandSchedulePolicy) error {
 	namespaces := c.filterNamespaces(policy.Spec.TargetNamespaceFilter)
 
 	for _, namespace := range namespaces {
-		quota := &v1.ResourceQuota{
+		quota := &core.ResourceQuota{
 			ObjectMeta: meta.ObjectMeta{
 				Name:      "zero-quota",
 				Namespace: namespace,
 			},
-			Spec: v1.ResourceQuotaSpec{
-				Hard: v1.ResourceList{
-					v1.ResourcePods: resource.MustParse("0"),
+			Spec: core.ResourceQuotaSpec{
+				Hard: core.ResourceList{
+					core.ResourcePods: resource.MustParse("0"),
 				},
 			},
 		}
@@ -134,6 +134,11 @@ func (c *Controller) executeStartup(policy *apis.StandSchedulePolicy) error {
 			CoreV1().
 			ResourceQuotas(namespace).
 			Delete(context.Background(), "zero-quota", meta.DeleteOptions{})
+
+		if errors.IsNotFound(err) {
+			c.logger.Warn("Resource quota not exists in namespace", zap.String("work_namespace", namespace))
+			continue
+		}
 
 		if err != nil {
 			c.logger.Error("Failed to delete resource quota in namespace",

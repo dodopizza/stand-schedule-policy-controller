@@ -98,7 +98,7 @@ func Test_ShutdownPolicy(t *testing.T) {
 				Spec: apis.StandSchedulePolicySpec{
 					TargetNamespaceFilter: "namespace1",
 					Schedule: apis.ScheduleSpec{
-						Startup:  "* * * * *",
+						Startup:  "0 0 1 * *",
 						Shutdown: "* * * * *",
 					},
 					Resources: apis.ResourcesSpec{
@@ -148,7 +148,7 @@ func Test_ShutdownPolicyWithOverride(t *testing.T) {
 				Spec: apis.StandSchedulePolicySpec{
 					TargetNamespaceFilter: "namespace1",
 					Schedule: apis.ScheduleSpec{
-						Startup:  "* * * * *",
+						Startup:  "0 0 1 * *",
 						Shutdown: "0 23 * * *",
 					},
 					Resources: apis.ResourcesSpec{
