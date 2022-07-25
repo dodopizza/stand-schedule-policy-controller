@@ -10,6 +10,7 @@ import (
 
 	"go.uber.org/zap"
 	core "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clock "k8s.io/utils/clock/testing"
 
@@ -112,8 +113,32 @@ func (f *fixture) WithPods(pods ...*core.Pod) *fixture {
 			Pods(pod.Namespace).
 			Create(context.Background(), pod, meta.CreateOptions{})
 		if err != nil {
-			f.t.Fatal(err)
+			f.t.Error(err)
 		}
+	}
+	return f
+}
+
+func (f *fixture) WithZeroQuota(namespace string) *fixture {
+	quota := &core.ResourceQuota{
+		ObjectMeta: meta.ObjectMeta{
+			Name:      "zero-quota",
+			Namespace: namespace,
+		},
+		Spec: core.ResourceQuotaSpec{
+			Hard: core.ResourceList{
+				core.ResourcePods: resource.MustParse("0"),
+			},
+		},
+	}
+
+	_, err := f.kube.CoreClient().
+		CoreV1().
+		ResourceQuotas(quota.Namespace).
+		Create(context.Background(), quota, meta.CreateOptions{})
+
+	if err != nil {
+		f.t.Fatal(err)
 	}
 	return f
 }

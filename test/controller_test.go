@@ -8,6 +8,7 @@ import (
 	"time"
 
 	core "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/controller"
@@ -62,6 +63,22 @@ func (f *fixture) AssertNamespaceEmpty(namespace string) {
 	}
 }
 
+func (f *fixture) AssertQuotaNotExists(namespace string) {
+	quotaName := "zero-quota"
+	_, err := f.kube.CoreClient().
+		CoreV1().
+		ResourceQuotas(namespace).
+		Get(context.Background(), quotaName, meta.GetOptions{})
+
+	if err == nil {
+		f.t.Errorf("Resource quota %s exists in namespace %s", quotaName, namespace)
+	}
+
+	if !errors.IsNotFound(err) {
+		f.t.Error(err)
+	}
+}
+
 func Test_StartController(t *testing.T) {
 	f := NewFixture(t)
 
@@ -71,9 +88,7 @@ func Test_StartController(t *testing.T) {
 
 func Test_ShutdownPolicy(t *testing.T) {
 	f := NewFixture(t).
-		WithNamespaces(
-			"namespace1",
-		).
+		WithNamespaces("namespace1").
 		WithPods(
 			&core.Pod{
 				ObjectMeta: meta.ObjectMeta{
@@ -116,11 +131,40 @@ func Test_ShutdownPolicy(t *testing.T) {
 	f.AssertNamespaceEmpty("namespace1")
 }
 
+func Test_StartupPolicy(t *testing.T) {
+	f := NewFixture(t).
+		WithNamespaces("namespace1").
+		WithZeroQuota("namespace1").
+		WithPolicies(
+			&apis.StandSchedulePolicy{
+				ObjectMeta: meta.ObjectMeta{
+					Name: "test-policy",
+				},
+				Spec: apis.StandSchedulePolicySpec{
+					TargetNamespaceFilter: "namespace1",
+					Schedule: apis.ScheduleSpec{
+						Startup:  "* * * * *",
+						Shutdown: "0 0 1 * *",
+					},
+					Resources: apis.ResourcesSpec{
+						Azure: []apis.AzureResource{},
+					},
+				},
+			},
+		)
+
+	c := f.CreateController()
+	f.AssertControllerStarted(c)
+
+	f.DelayForWorkers(time.Second * 5)
+	f.IncreaseTime(time.Minute * 2)
+	f.DelayForWorkers(time.Second * 10)
+	f.AssertQuotaNotExists("namespace1")
+}
+
 func Test_ShutdownPolicyWithOverride(t *testing.T) {
 	f := NewFixture(t).
-		WithNamespaces(
-			"namespace1",
-		).
+		WithNamespaces("namespace1").
 		WithPods(
 			&core.Pod{
 				ObjectMeta: meta.ObjectMeta{
