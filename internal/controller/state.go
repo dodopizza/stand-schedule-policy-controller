@@ -69,6 +69,10 @@ func NewSchedule(schedule, override string) (*Schedule, error) {
 	}, nil
 }
 
+func (s *ScheduleState) IsScheduleEquals(other *ScheduleState) bool {
+	return s.startup.Equals(other.startup) && s.shutdown.Equals(other.shutdown)
+}
+
 func (s *Schedule) GetNextTimeAfter(since time.Time) time.Time {
 	// todo: store when override expires ?
 
@@ -76,6 +80,10 @@ func (s *Schedule) GetNextTimeAfter(since time.Time) time.Time {
 		return s.override
 	}
 	return s.schedule.Next(since)
+}
+
+func (s *Schedule) Equals(other *Schedule) bool {
+	return s.schedule == other.schedule && s.override == other.override
 }
 
 func (s *State) AddOrUpdate(key string, info *ScheduleState) {

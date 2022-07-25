@@ -17,17 +17,17 @@ import (
 
 type (
 	Controller struct {
-		notify    chan error
-		logger    *zap.Logger
-		kube      kubernetes.Interface
-		azure     azure.Interface
-		clock     clock.WithTicker
-		state     *State
-		scheduler *worker.Worker
-		executor  *worker.Worker
-		factory   *FactoryGroup
-		lister    *ListerGroup
-		events    *eventsource.EventSource[apis.StandSchedulePolicy]
+		notify     chan error
+		logger     *zap.Logger
+		kube       kubernetes.Interface
+		azure      azure.Interface
+		clock      clock.WithTicker
+		state      *State
+		reconciler *worker.Worker
+		executor   *worker.Worker
+		factory    *FactoryGroup
+		lister     *ListerGroup
+		events     *eventsource.EventSource[apis.StandSchedulePolicy]
 	}
 )
 
@@ -56,7 +56,7 @@ func NewController(
 			DeleteFunc: c.delete,
 		},
 	)
-	c.scheduler = worker.New(cfg.GetWorkerConfig(), c.logger.Named("scheduler"), c.clock, c.schedule)
+	c.reconciler = worker.New(cfg.GetWorkerConfig(), c.logger.Named("reconciler"), c.clock, c.reconcile)
 	c.executor = worker.New(cfg.GetWorkerConfig(), c.logger.Named("executor"), c.clock, c.execute)
 	return c
 }
@@ -77,13 +77,13 @@ func (c *Controller) Start(interrupt <-chan struct{}) {
 	c.logger.Info("Synced caches")
 
 	c.logger.Info("Starting workers")
-	c.scheduler.Start(interrupt)
+	c.reconciler.Start(interrupt)
 	c.executor.Start(interrupt)
 	c.logger.Info("Started workers")
 }
 
 func (c *Controller) Shutdown() error {
-	c.scheduler.Shutdown()
+	c.reconciler.Shutdown()
 	c.executor.Shutdown()
 	return nil
 }
