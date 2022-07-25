@@ -42,16 +42,16 @@ func (c *Controller) reconcile(i interface{}) error {
 	return err
 }
 
-func (c *Controller) schedule(
+func (c *Controller) reschedule(
 	since time.Time,
 	policyName string,
 	scheduleState *ScheduleState,
 ) {
-	c.scheduleWorkItem(since, policyName, apis.StatusShutdown, scheduleState.shutdown)
-	c.scheduleWorkItem(since, policyName, apis.StatusStartup, scheduleState.startup)
+	c.schedule(since, policyName, apis.StatusShutdown, scheduleState.shutdown)
+	c.schedule(since, policyName, apis.StatusStartup, scheduleState.startup)
 }
 
-func (c *Controller) scheduleWorkItem(
+func (c *Controller) schedule(
 	since time.Time,
 	policyName string,
 	scheduleType apis.ConditionScheduleType,

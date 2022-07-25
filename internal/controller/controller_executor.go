@@ -2,6 +2,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"time"
 
@@ -40,30 +41,30 @@ func (w *WorkItem) deadline() time.Time {
 
 func (c *Controller) execute(i interface{}) error {
 	now := c.clock.Now()
-	work := i.(WorkItem)
+	item := i.(WorkItem)
 
-	if now.Before(work.fireAt) {
+	if now.Before(item.fireAt) {
 		c.logger.Warn("Skip execution of policy because of current time before scheduled",
-			zap.String("policy_name", work.policyName),
-			zap.String("schedule_type", string(work.scheduleType)),
+			zap.String("policy_name", item.policyName),
+			zap.String("schedule_type", string(item.scheduleType)),
 			zap.Stringer("time", now),
-			zap.Stringer("scheduled_at_time", work.fireAt))
+			zap.Stringer("scheduled_at_time", item.fireAt))
 		return nil
 	}
 
-	if now.After(work.deadline()) {
+	if now.After(item.deadline()) {
 		c.logger.Warn("Skip execution of policy because of current time after deadline",
-			zap.String("policy_name", work.policyName),
-			zap.String("schedule_type", string(work.scheduleType)),
+			zap.String("policy_name", item.policyName),
+			zap.String("schedule_type", string(item.scheduleType)),
 			zap.Stringer("time", now),
-			zap.Stringer("scheduled_deadline", work.deadline()))
+			zap.Stringer("scheduled_deadline", item.deadline()))
 		return nil
 	}
 
-	state, exists := c.state.Get(work.policyName)
-	policy, err := c.lister.stands.Get(work.policyName)
+	state, exists := c.state.Get(item.policyName)
+	policy, err := c.lister.stands.Get(item.policyName)
 	if errors.IsNotFound(err) || !exists {
-		c.logger.Warn("Skip execution of policy because it not exists", zap.String("policy_name", work.policyName))
+		c.logger.Warn("Skip execution of policy because it not exists", zap.String("policy_name", item.policyName))
 		return nil
 	}
 
@@ -72,26 +73,29 @@ func (c *Controller) execute(i interface{}) error {
 	}
 
 	c.logger.Info("Run execution of policy",
-		zap.String("policy_name", work.policyName),
-		zap.String("schedule_type", string(work.scheduleType)))
+		zap.String("policy_name", item.policyName),
+		zap.String("schedule_type", string(item.scheduleType)))
 
-	switch work.scheduleType {
+	switch item.scheduleType {
 	case apis.StatusShutdown:
 		err = c.executeShutdown(policy)
-		c.updateStatus(now, state.shutdown, err)
+		state.UpdateStatus(now, err, item.scheduleType)
 	case apis.StatusStartup:
 		err = c.executeStartup(policy)
-		c.updateStatus(now, state.startup, err)
+		state.UpdateStatus(now, err, item.scheduleType)
+	default:
+		err = fmt.Errorf("not supported schedule type specified: %s", item.scheduleType)
 	}
 
 	if err != nil {
 		c.logger.Error("Failed to execute policy",
-			zap.String("policy_name", work.policyName),
-			zap.String("schedule_type", string(work.scheduleType)),
+			zap.String("policy_name", item.policyName),
+			zap.String("schedule_type", string(item.scheduleType)),
 			zap.Error(err))
+		return err
 	}
 
-	return err
+	return nil
 }
 
 func (c *Controller) executeShutdown(policy *apis.StandSchedulePolicy) error {
@@ -164,14 +168,6 @@ func (c *Controller) executeStartup(policy *apis.StandSchedulePolicy) error {
 	}
 
 	return summary
-}
-
-func (c *Controller) updateStatus(at time.Time, schedule *Schedule, err error) {
-	if err != nil {
-		schedule.SetFailed(at)
-		return
-	}
-	schedule.SetCompleted(at)
 }
 
 func (c *Controller) filterNamespaces(filter string) ([]string, error) {

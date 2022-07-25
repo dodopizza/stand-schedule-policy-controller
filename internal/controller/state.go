@@ -74,6 +74,26 @@ func NewSchedule(schedule, override string) (*Schedule, error) {
 	}, nil
 }
 
+func (s *ScheduleState) GetSchedule(st apis.ConditionScheduleType) *Schedule {
+	switch st {
+	case apis.StatusStartup:
+		return s.startup
+	case apis.StatusShutdown:
+		return s.shutdown
+	}
+	return nil
+}
+
+func (s *ScheduleState) UpdateStatus(at time.Time, err error, st apis.ConditionScheduleType) {
+	schedule := s.GetSchedule(st)
+
+	if err != nil {
+		schedule.SetFailed(at)
+	} else {
+		schedule.SetCompleted(at)
+	}
+}
+
 func (s *ScheduleState) IsScheduleEquals(other *ScheduleState) bool {
 	return s.startup.Equals(other.startup) && s.shutdown.Equals(other.shutdown)
 }
