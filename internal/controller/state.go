@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"reflect"
 	"sync"
 	"time"
 
@@ -96,15 +97,17 @@ func (s *Schedule) GetNextTimeAfter(since time.Time) time.Time {
 
 func (s *Schedule) SetFiredSince(since time.Time) {
 	s.fireAt = s.GetNextTimeAfter(since)
+	s.failedAt = time.Time{}
+	s.completedAt = time.Time{}
 }
 
-func (s *Schedule) SetCompleted(t time.Time) {
-	s.completedAt = t
+func (s *Schedule) SetCompleted(at time.Time) {
+	s.completedAt = at
 	s.failedAt = time.Time{}
 }
 
-func (s *Schedule) SetFailed(t time.Time) {
-	s.failedAt = t
+func (s *Schedule) SetFailed(at time.Time) {
+	s.failedAt = at
 	s.completedAt = time.Time{}
 }
 
@@ -139,7 +142,7 @@ func (s *Schedule) Conditions(st apis.ConditionScheduleType) []apis.StatusCondit
 }
 
 func (s *Schedule) Equals(other *Schedule) bool {
-	return s.schedule == other.schedule && s.override == other.override
+	return reflect.DeepEqual(s.schedule, other.schedule) && s.override == other.override
 }
 
 func (s *State) AddOrUpdate(key string, info *ScheduleState) {
