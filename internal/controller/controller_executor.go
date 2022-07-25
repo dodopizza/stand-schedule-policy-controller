@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"time"
 
+	"go.uber.org/multierr"
 	"go.uber.org/zap"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -12,11 +13,11 @@ import (
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 
+	"github.com/dodopizza/stand-schedule-policy-controller/internal/kubernetes"
 	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
 )
 
 // todo: handle external resources
-// todo: combine errors
 // todo: reschedule after completion
 // todo: check workitem.fireat and schedule.fireat
 
@@ -26,6 +27,10 @@ type (
 		scheduleType apis.ConditionScheduleType
 		fireAt       time.Time
 	}
+)
+
+const (
+	_ResourceQuotaName = "zero-quota"
 )
 
 func (w *WorkItem) deadline() time.Time {
@@ -55,8 +60,9 @@ func (c *Controller) execute(i interface{}) error {
 		return nil
 	}
 
+	state, exists := c.state.Get(work.policyName)
 	policy, err := c.lister.stands.Get(work.policyName)
-	if errors.IsNotFound(err) {
+	if errors.IsNotFound(err) || !exists {
 		c.logger.Warn("Skip execution of policy because it not exists", zap.String("policy_name", work.policyName))
 		return nil
 	}
@@ -69,11 +75,23 @@ func (c *Controller) execute(i interface{}) error {
 		zap.String("policy_name", work.policyName),
 		zap.String("schedule_type", string(work.scheduleType)))
 
-	if work.scheduleType == apis.StatusStartup {
-		return c.executeStartup(policy)
-	} else {
-		return c.executeShutdown(policy)
+	switch work.scheduleType {
+	case apis.StatusShutdown:
+		err = c.executeShutdown(policy)
+		c.updateStatus(now, state.shutdown, err)
+	case apis.StatusStartup:
+		err = c.executeStartup(policy)
+		c.updateStatus(now, state.startup, err)
 	}
+
+	if err != nil {
+		c.logger.Error("Failed to execute policy",
+			zap.String("policy_name", work.policyName),
+			zap.String("schedule_type", string(work.scheduleType)),
+			zap.Error(err))
+	}
+
+	return err
 }
 
 func (c *Controller) executeShutdown(policy *apis.StandSchedulePolicy) error {
@@ -83,10 +101,15 @@ func (c *Controller) executeShutdown(policy *apis.StandSchedulePolicy) error {
 		return err
 	}
 
+	var summary error
 	for _, namespace := range namespaces {
+		c.logger.Debug("Create resource quota in namespace",
+			zap.String("quota", _ResourceQuotaName),
+			zap.String("namespace", namespace))
+
 		quota := &core.ResourceQuota{
 			ObjectMeta: meta.ObjectMeta{
-				Name:      "zero-quota",
+				Name:      _ResourceQuotaName,
 				Namespace: namespace,
 				OwnerReferences: []meta.OwnerReference{
 					{
@@ -103,37 +126,21 @@ func (c *Controller) executeShutdown(policy *apis.StandSchedulePolicy) error {
 				},
 			},
 		}
-
-		c.logger.Debug("Create resource quota in namespace", zap.String("work_namespace", namespace))
-		_, err := c.kube.CoreClient().
+		quota, err = c.kube.CoreClient().
 			CoreV1().
 			ResourceQuotas(namespace).
 			Create(context.Background(), quota, meta.CreateOptions{})
-
-		if errors.IsAlreadyExists(err) {
-			continue
-		}
-
-		if err != nil {
-			c.logger.Error("Failed to create resource quota in namespace",
-				zap.Error(err),
-				zap.String("work_namespace", namespace))
-		}
+		summary = multierr.Append(summary, kubernetes.IgnoreAlreadyExistsError(err))
 
 		c.logger.Debug("Delete all existing pods in namespace", zap.String("work_namespace", namespace))
 		err = c.kube.CoreClient().
 			CoreV1().
 			Pods(namespace).
 			DeleteCollection(context.Background(), meta.DeleteOptions{}, meta.ListOptions{})
-
-		if err != nil {
-			c.logger.Error("Failed to delete all pods from namespace",
-				zap.Error(err),
-				zap.String("work_namespace", namespace))
-		}
+		summary = multierr.Append(summary, err)
 	}
 
-	return nil
+	return summary
 }
 
 func (c *Controller) executeStartup(policy *apis.StandSchedulePolicy) error {
@@ -143,25 +150,28 @@ func (c *Controller) executeStartup(policy *apis.StandSchedulePolicy) error {
 		return err
 	}
 
+	var summary error
 	for _, namespace := range namespaces {
+		c.logger.Debug("Delete resource quota in namespace",
+			zap.String("quota", _ResourceQuotaName),
+			zap.String("namespace", namespace))
+
 		err := c.kube.CoreClient().
 			CoreV1().
 			ResourceQuotas(namespace).
-			Delete(context.Background(), "zero-quota", meta.DeleteOptions{})
-
-		if errors.IsNotFound(err) {
-			c.logger.Warn("Resource quota not exists in namespace", zap.String("work_namespace", namespace))
-			continue
-		}
-
-		if err != nil {
-			c.logger.Error("Failed to delete resource quota in namespace",
-				zap.Error(err),
-				zap.String("work_namespace", namespace))
-		}
+			Delete(context.Background(), _ResourceQuotaName, meta.DeleteOptions{})
+		summary = multierr.Append(summary, kubernetes.IgnoreNotFoundError(err))
 	}
 
-	return nil
+	return summary
+}
+
+func (c *Controller) updateStatus(at time.Time, schedule *Schedule, err error) {
+	if err != nil {
+		schedule.SetFailed(at)
+		return
+	}
+	schedule.SetCompleted(at)
 }
 
 func (c *Controller) filterNamespaces(filter string) ([]string, error) {

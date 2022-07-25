@@ -48,7 +48,7 @@ func (c *Controller) schedule(
 	scheduleState *ScheduleState,
 ) {
 	c.scheduleWorkItem(since, policyName, apis.StatusShutdown, scheduleState.shutdown)
-	c.scheduleWorkItem(since, policyName, apis.StatusShutdown, scheduleState.startup)
+	c.scheduleWorkItem(since, policyName, apis.StatusStartup, scheduleState.startup)
 }
 
 func (c *Controller) scheduleWorkItem(
