@@ -4,6 +4,7 @@ package test
 
 import (
 	"context"
+	"os"
 	"testing"
 	"time"
 
@@ -18,8 +19,10 @@ import (
 )
 
 var (
-	_KubeConfigEnvVar = "TEST_KUBECONFIG_PATH"
-	_Time             = time.Now()
+	_WorkingDir, _      = os.Getwd()
+	_DefaultKubeCfgPath = _WorkingDir + "/../bin/kubeconfig.yaml"
+	_KubeCfgEnvVar      = "TEST_KUBECONFIG_PATH"
+	_Time               = time.Now()
 )
 
 type (
@@ -44,7 +47,12 @@ type (
 )
 
 func NewFixture(t *testing.T) *fixture {
-	k, err := kubernetes.NewForTest(_KubeConfigEnvVar)
+	cfgPath := os.Getenv(_KubeCfgEnvVar)
+	if cfgPath == "" {
+		t.Setenv(_KubeCfgEnvVar, _DefaultKubeCfgPath)
+	}
+
+	k, err := kubernetes.NewForTest(_KubeCfgEnvVar)
 	if err != nil {
 		t.Fatal(err)
 	}
