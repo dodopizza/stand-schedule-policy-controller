@@ -20,13 +20,13 @@ type (
 	}
 )
 
-func NewSchedule(schedule, override string) (*ScheduleState, error) {
-	sc, err := cron.ParseStandard(schedule)
+func NewSchedule(schedule apis.CronSchedule) (*ScheduleState, error) {
+	sc, err := cron.ParseStandard(schedule.Cron)
 	if err != nil {
 		return nil, err
 	}
 
-	ov, _ := time.Parse(time.RFC3339, override)
+	ov, _ := time.Parse(time.RFC3339, schedule.Override)
 
 	return &ScheduleState{
 		schedule: sc,

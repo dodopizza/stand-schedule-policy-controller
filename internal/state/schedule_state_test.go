@@ -12,7 +12,7 @@ import (
 
 func Test_GetExecutedTime(t *testing.T) {
 	ts := time.Now()
-	schedule, err := NewSchedule("* * * * *", ts.Format(time.RFC3339))
+	schedule, err := NewSchedule(apis.CronSchedule{Cron: "* * * * *", Override: ts.Format(time.RFC3339)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,13 +26,13 @@ func Test_GetExecutedTime(t *testing.T) {
 
 func Test_GetNextExecutionTime(t *testing.T) {
 	ts := time.Now().Round(time.Minute)
-	schedule, err := NewSchedule("* * * * *", "")
+	schedule, err := NewSchedule(apis.CronSchedule{Cron: "* * * * *"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, ts.Add(time.Minute), schedule.GetNextExecutionTime(ts))
 
-	scheduleOverride, err := NewSchedule("@yearly", ts.Add(time.Minute).Format(time.RFC3339))
+	scheduleOverride, err := NewSchedule(apis.CronSchedule{Cron: "@yearly", Override: ts.Add(time.Minute).Format(time.RFC3339)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func Test_GetNextExecutionTime(t *testing.T) {
 
 func Test_SetFiredSince(t *testing.T) {
 	ts := time.Now().Round(time.Minute)
-	schedule, err := NewSchedule("* * * * *", "")
+	schedule, err := NewSchedule(apis.CronSchedule{Cron: "* * * * *"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func Test_SetFiredSince(t *testing.T) {
 
 func Test_SetFailed(t *testing.T) {
 	ts := time.Now().Round(time.Minute)
-	schedule, err := NewSchedule("* * * * *", "")
+	schedule, err := NewSchedule(apis.CronSchedule{Cron: "* * * * *"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func Test_SetFailed(t *testing.T) {
 
 func Test_SetCompleted(t *testing.T) {
 	ts := time.Now().Round(time.Minute)
-	schedule, err := NewSchedule("* * * * *", "")
+	schedule, err := NewSchedule(apis.CronSchedule{Cron: "* * * * *"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +78,7 @@ func Test_SetCompleted(t *testing.T) {
 
 func Test_GetConditions(t *testing.T) {
 	ts := time.Now().Round(time.Minute)
-	schedule, err := NewSchedule("* * * * *", "")
+	schedule, err := NewSchedule(apis.CronSchedule{Cron: "* * * * *"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func Test_GetConditions(t *testing.T) {
 
 func Test_ScheduleRequired(t *testing.T) {
 	ts := time.Now().Round(time.Minute)
-	schedule, err := NewSchedule("* * * * *", "")
+	schedule, err := NewSchedule(apis.CronSchedule{Cron: "* * * * *"})
 	if err != nil {
 		t.Fatal(err)
 	}

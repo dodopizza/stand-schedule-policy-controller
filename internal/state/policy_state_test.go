@@ -6,37 +6,33 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
 )
 
 func Test_GetSchedule(t *testing.T) {
 	ps, err := NewPolicyState(
-		&apis.StandSchedulePolicy{
-			ObjectMeta: meta.ObjectMeta{
-				Name: "test",
+		&apis.SchedulesSpec{
+			Startup: apis.CronSchedule{
+				Cron:     "2 * * * *",
+				Override: "",
 			},
-			Spec: apis.StandSchedulePolicySpec{
-				TargetNamespaceFilter: "namespace1",
-				Schedule: apis.ScheduleSpec{
-					Startup:  "2 * * * *",
-					Shutdown: "1 * * * *",
-				},
-				Resources: apis.ResourcesSpec{},
+			Shutdown: apis.CronSchedule{
+				Cron:     "1 * * * *",
+				Override: "",
 			},
 		})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	sh1, err := NewSchedule("1 * * * *", "")
+	sh1, err := NewSchedule(apis.CronSchedule{Cron: "1 * * * *"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	assert.Equal(t, sh1, ps.GetSchedule(apis.StatusShutdown))
 
-	sh2, err := NewSchedule("2 * * * *", "")
+	sh2, err := NewSchedule(apis.CronSchedule{Cron: "2 * * * *"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,17 +42,12 @@ func Test_GetSchedule(t *testing.T) {
 func Test_UpdateStatus(t *testing.T) {
 	ts := time.Now().Round(time.Minute)
 	ps, err := NewPolicyState(
-		&apis.StandSchedulePolicy{
-			ObjectMeta: meta.ObjectMeta{
-				Name: "test",
+		&apis.SchedulesSpec{
+			Startup: apis.CronSchedule{
+				Cron: "* * * * *",
 			},
-			Spec: apis.StandSchedulePolicySpec{
-				TargetNamespaceFilter: "namespace1",
-				Schedule: apis.ScheduleSpec{
-					Startup:  "* * * * *",
-					Shutdown: "* * * * *",
-				},
-				Resources: apis.ResourcesSpec{},
+			Shutdown: apis.CronSchedule{
+				Cron: "* * * * *",
 			},
 		})
 	if err != nil {

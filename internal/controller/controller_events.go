@@ -11,7 +11,7 @@ import (
 
 func (c *Controller) add(obj *apis.StandSchedulePolicy) {
 	c.logger.Debug("Discovered policy object with name", zap.String("policy_name", obj.Name))
-	ps, err := state.NewPolicyState(obj)
+	ps, err := state.NewPolicyState(&obj.Spec.Schedules)
 	if err != nil {
 		c.logger.Error("Policy object with name has invalid format", zap.String("policy_name", obj.Name), zap.Error(err))
 		return
@@ -24,12 +24,12 @@ func (c *Controller) add(obj *apis.StandSchedulePolicy) {
 
 func (c *Controller) update(oldObj, newObj *apis.StandSchedulePolicy) {
 	c.logger.Info("Sync policy object with name", zap.String("policy_name", newObj.Name))
-	oldState, err := state.NewPolicyState(newObj)
+	oldState, err := state.NewPolicyState(&oldObj.Spec.Schedules)
 	if err != nil {
 		c.logger.Error("Policy object with name has invalid format", zap.String("policy_name", oldObj.Name), zap.Error(err))
 		return
 	}
-	newState, err := state.NewPolicyState(newObj)
+	newState, err := state.NewPolicyState(&newObj.Spec.Schedules)
 	if err != nil {
 		c.logger.Error("Policy object with name has invalid format", zap.String("policy_name", newObj.Name), zap.Error(err))
 		return

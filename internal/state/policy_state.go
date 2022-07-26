@@ -13,19 +13,13 @@ type (
 	}
 )
 
-func NewPolicyState(policy *apis.StandSchedulePolicy) (*PolicyState, error) {
-	startup, err := NewSchedule(
-		policy.Spec.Schedule.Startup,
-		policy.Spec.Schedule.StartupOverride,
-	)
+func NewPolicyState(schedules *apis.SchedulesSpec) (*PolicyState, error) {
+	startup, err := NewSchedule(schedules.Startup)
 	if err != nil {
 		return nil, err
 	}
 
-	shutdown, err := NewSchedule(
-		policy.Spec.Schedule.Shutdown,
-		policy.Spec.Schedule.ShutdownOverride,
-	)
+	shutdown, err := NewSchedule(schedules.Shutdown)
 	if err != nil {
 		return nil, err
 	}

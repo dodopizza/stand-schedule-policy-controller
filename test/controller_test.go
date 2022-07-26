@@ -104,9 +104,9 @@ func Test_PolicyWithShutdown(t *testing.T) {
 				},
 				Spec: apis.StandSchedulePolicySpec{
 					TargetNamespaceFilter: "namespace1",
-					Schedule: apis.ScheduleSpec{
-						Startup:  "@yearly",
-						Shutdown: "* * * * *",
+					Schedules: apis.SchedulesSpec{
+						Startup:  apis.CronSchedule{Cron: "@yearly"},
+						Shutdown: apis.CronSchedule{Cron: "* * * * *"},
 					},
 					Resources: apis.ResourcesSpec{
 						Azure: []apis.AzureResource{},
@@ -134,9 +134,9 @@ func Test_PolicyWithStartup(t *testing.T) {
 				},
 				Spec: apis.StandSchedulePolicySpec{
 					TargetNamespaceFilter: "namespace1",
-					Schedule: apis.ScheduleSpec{
-						Startup:  "* * * * *",
-						Shutdown: "@yearly",
+					Schedules: apis.SchedulesSpec{
+						Startup:  apis.CronSchedule{Cron: "* * * * *"},
+						Shutdown: apis.CronSchedule{Cron: "@yearly"},
 					},
 					Resources: apis.ResourcesSpec{
 						Azure: []apis.AzureResource{},
@@ -165,10 +165,12 @@ func Test_PolicyWithShutdownOverride(t *testing.T) {
 				},
 				Spec: apis.StandSchedulePolicySpec{
 					TargetNamespaceFilter: "namespace1",
-					Schedule: apis.ScheduleSpec{
-						Startup:          "@yearly",
-						Shutdown:         "@yearly",
-						ShutdownOverride: _Time.Add(time.Second * 1).Format(time.RFC3339),
+					Schedules: apis.SchedulesSpec{
+						Startup: apis.CronSchedule{Cron: "@yearly"},
+						Shutdown: apis.CronSchedule{
+							Cron:     "@yearly",
+							Override: _Time.Add(time.Second * 1).Format(time.RFC3339),
+						},
 					},
 					Resources: apis.ResourcesSpec{
 						Azure: []apis.AzureResource{},
@@ -196,10 +198,12 @@ func Test_PolicyWithStartupOverride(t *testing.T) {
 				},
 				Spec: apis.StandSchedulePolicySpec{
 					TargetNamespaceFilter: "namespace1",
-					Schedule: apis.ScheduleSpec{
-						Startup:         "@yearly",
-						StartupOverride: _Time.Add(time.Second * 1).Format(time.RFC3339),
-						Shutdown:        "@yearly",
+					Schedules: apis.SchedulesSpec{
+						Startup: apis.CronSchedule{
+							Cron:     "@yearly",
+							Override: _Time.Add(time.Second * 1).Format(time.RFC3339),
+						},
+						Shutdown: apis.CronSchedule{Cron: "@yearly"},
 					},
 					Resources: apis.ResourcesSpec{
 						Azure: []apis.AzureResource{},
@@ -228,9 +232,9 @@ func Test_PolicyWithShutdownStartup(t *testing.T) {
 				},
 				Spec: apis.StandSchedulePolicySpec{
 					TargetNamespaceFilter: "namespace1",
-					Schedule: apis.ScheduleSpec{
-						Startup:  "5 * * * *",
-						Shutdown: "3 * * * *",
+					Schedules: apis.SchedulesSpec{
+						Startup:  apis.CronSchedule{Cron: "5 * * * *"},
+						Shutdown: apis.CronSchedule{Cron: "3 * * * *"},
 					},
 					Resources: apis.ResourcesSpec{
 						Azure: []apis.AzureResource{},
