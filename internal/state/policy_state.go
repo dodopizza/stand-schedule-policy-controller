@@ -16,7 +16,7 @@ type (
 func NewPolicyState(policy *apis.StandSchedulePolicy) (*PolicyState, error) {
 	startup, err := NewSchedule(
 		policy.Spec.Schedule.Startup,
-		policy.ObjectMeta.Annotations[apis.AnnotationScheduleStartupTime],
+		policy.Spec.Schedule.StartupOverride,
 	)
 	if err != nil {
 		return nil, err
@@ -24,7 +24,7 @@ func NewPolicyState(policy *apis.StandSchedulePolicy) (*PolicyState, error) {
 
 	shutdown, err := NewSchedule(
 		policy.Spec.Schedule.Shutdown,
-		policy.ObjectMeta.Annotations[apis.AnnotationScheduleShutdownTime],
+		policy.Spec.Schedule.ShutdownOverride,
 	)
 	if err != nil {
 		return nil, err

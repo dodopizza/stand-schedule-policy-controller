@@ -162,15 +162,13 @@ func Test_PolicyWithShutdownOverride(t *testing.T) {
 			&apis.StandSchedulePolicy{
 				ObjectMeta: meta.ObjectMeta{
 					Name: "test-policy",
-					Annotations: map[string]string{
-						apis.AnnotationScheduleShutdownTime: _Time.Add(time.Second * 1).Format(time.RFC3339),
-					},
 				},
 				Spec: apis.StandSchedulePolicySpec{
 					TargetNamespaceFilter: "namespace1",
 					Schedule: apis.ScheduleSpec{
-						Startup:  "@yearly",
-						Shutdown: "@yearly",
+						Startup:          "@yearly",
+						Shutdown:         "@yearly",
+						ShutdownOverride: _Time.Add(time.Second * 1).Format(time.RFC3339),
 					},
 					Resources: apis.ResourcesSpec{
 						Azure: []apis.AzureResource{},
@@ -195,15 +193,13 @@ func Test_PolicyWithStartupOverride(t *testing.T) {
 			&apis.StandSchedulePolicy{
 				ObjectMeta: meta.ObjectMeta{
 					Name: "test-policy",
-					Annotations: map[string]string{
-						apis.AnnotationScheduleStartupTime: _Time.Add(time.Second * 1).Format(time.RFC3339),
-					},
 				},
 				Spec: apis.StandSchedulePolicySpec{
 					TargetNamespaceFilter: "namespace1",
 					Schedule: apis.ScheduleSpec{
-						Startup:  "@yearly",
-						Shutdown: "@yearly",
+						Startup:         "@yearly",
+						StartupOverride: _Time.Add(time.Second * 1).Format(time.RFC3339),
+						Shutdown:        "@yearly",
 					},
 					Resources: apis.ResourcesSpec{
 						Azure: []apis.AzureResource{},

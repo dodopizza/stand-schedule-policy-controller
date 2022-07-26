@@ -11,9 +11,7 @@ import (
 )
 
 const (
-	AnnotationPrefix               = "standschedule." + GroupName
-	AnnotationScheduleStartupTime  = AnnotationPrefix + "/startup-at"
-	AnnotationScheduleShutdownTime = AnnotationPrefix + "/shutdown-at"
+	AnnotationPrefix = "standschedule." + GroupName
 )
 
 // +genclient
@@ -63,6 +61,12 @@ type ScheduleSpec struct {
 	// Startup defines schedule in cron format for stand startup.
 	Startup string `json:"startup"`
 
+	// StartupOverride defines override for startup schedule as time string
+	StartupOverride string `json:"startupOverride,omitempty"`
+
 	// Shutdown defines schedule in cron format for stand shutdown.
 	Shutdown string `json:"shutdown"`
+
+	// StartupOverride defines override for shutdown schedule as time string
+	ShutdownOverride string `json:"shutdownOverride,omitempty"`
 }
