@@ -117,8 +117,8 @@ spec:
                         last transition.
                       type: string
                     status:
-                      description: Status is the status of the condition. Can be True,
-                        False, Unknown.
+                      description: Status is the status of the condition. Can be Startup
+                        or Shutdown.
                       type: string
                     type:
                       description: Type is the type of the condition.
