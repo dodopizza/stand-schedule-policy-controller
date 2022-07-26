@@ -14,15 +14,15 @@ import (
 type (
 	State struct {
 		lock sync.Mutex
-		data map[string]*ScheduleState
+		data map[string]*PolicyState
+	}
+
+	PolicyState struct {
+		startup  *ScheduleState
+		shutdown *ScheduleState
 	}
 
 	ScheduleState struct {
-		startup  *Schedule
-		shutdown *Schedule
-	}
-
-	Schedule struct {
 		schedule    cron.Schedule
 		override    time.Time
 		fireAt      time.Time
@@ -33,11 +33,11 @@ type (
 
 func NewControllerState() *State {
 	return &State{
-		data: make(map[string]*ScheduleState),
+		data: make(map[string]*PolicyState),
 	}
 }
 
-func NewScheduleState(policy *apis.StandSchedulePolicy) (*ScheduleState, error) {
+func NewPolicyState(policy *apis.StandSchedulePolicy) (*PolicyState, error) {
 	startup, err := NewSchedule(
 		policy.Spec.Schedule.Startup,
 		policy.ObjectMeta.Annotations[apis.AnnotationScheduleStartupTime],
@@ -54,13 +54,13 @@ func NewScheduleState(policy *apis.StandSchedulePolicy) (*ScheduleState, error) 
 		return nil, err
 	}
 
-	return &ScheduleState{
+	return &PolicyState{
 		startup:  startup,
 		shutdown: shutdown,
 	}, nil
 }
 
-func NewSchedule(schedule, override string) (*Schedule, error) {
+func NewSchedule(schedule, override string) (*ScheduleState, error) {
 	sc, err := cron.ParseStandard(schedule)
 	if err != nil {
 		return nil, err
@@ -68,24 +68,24 @@ func NewSchedule(schedule, override string) (*Schedule, error) {
 
 	ov, _ := time.Parse(time.RFC3339, override)
 
-	return &Schedule{
+	return &ScheduleState{
 		schedule: sc,
 		override: ov,
 	}, nil
 }
 
-func (s *ScheduleState) GetSchedule(st apis.ConditionScheduleType) *Schedule {
+func (ps *PolicyState) GetSchedule(st apis.ConditionScheduleType) *ScheduleState {
 	switch st {
 	case apis.StatusStartup:
-		return s.startup
+		return ps.startup
 	case apis.StatusShutdown:
-		return s.shutdown
+		return ps.shutdown
 	}
 	return nil
 }
 
-func (s *ScheduleState) UpdateStatus(at time.Time, err error, st apis.ConditionScheduleType) {
-	schedule := s.GetSchedule(st)
+func (ps *PolicyState) UpdateStatus(at time.Time, err error, st apis.ConditionScheduleType) {
+	schedule := ps.GetSchedule(st)
 
 	if err != nil {
 		schedule.SetFailed(at)
@@ -94,85 +94,85 @@ func (s *ScheduleState) UpdateStatus(at time.Time, err error, st apis.ConditionS
 	}
 }
 
-func (s *ScheduleState) ScheduleEquals(other *ScheduleState) bool {
-	return s.startup.Equals(other.startup) && s.shutdown.Equals(other.shutdown)
+func (ps *PolicyState) ScheduleEquals(other *PolicyState) bool {
+	return ps.startup.Equals(other.startup) && ps.shutdown.Equals(other.shutdown)
 }
 
-func (s *ScheduleState) GetConditions() []apis.StatusCondition {
+func (ps *PolicyState) GetConditions() []apis.StatusCondition {
 	conditions := []apis.StatusCondition{}
-	conditions = append(conditions, s.startup.GetConditions(apis.StatusStartup)...)
-	conditions = append(conditions, s.shutdown.GetConditions(apis.StatusShutdown)...)
+	conditions = append(conditions, ps.startup.GetConditions(apis.StatusStartup)...)
+	conditions = append(conditions, ps.shutdown.GetConditions(apis.StatusShutdown)...)
 	return conditions
 }
 
-func (s *Schedule) GetNextTimeAfter(since time.Time) time.Time {
+func (ss *ScheduleState) GetNextTimeAfter(since time.Time) time.Time {
 	// todo: store when override expires ?
 
-	if s.override.After(since) {
-		return s.override
+	if ss.override.After(since) {
+		return ss.override
 	}
 
-	return s.schedule.Next(since)
+	return ss.schedule.Next(since)
 }
 
-func (s *Schedule) SetFiredSince(since time.Time) {
-	s.fireAt = s.GetNextTimeAfter(since)
-	s.failedAt = time.Time{}
-	s.completedAt = time.Time{}
+func (ss *ScheduleState) SetFiredSince(since time.Time) {
+	ss.fireAt = ss.GetNextTimeAfter(since)
+	ss.failedAt = time.Time{}
+	ss.completedAt = time.Time{}
 }
 
-func (s *Schedule) SetCompleted(at time.Time) {
-	s.completedAt = at
-	s.failedAt = time.Time{}
+func (ss *ScheduleState) SetCompleted(at time.Time) {
+	ss.completedAt = at
+	ss.failedAt = time.Time{}
 }
 
-func (s *Schedule) SetFailed(at time.Time) {
-	s.failedAt = at
-	s.completedAt = time.Time{}
+func (ss *ScheduleState) SetFailed(at time.Time) {
+	ss.failedAt = at
+	ss.completedAt = time.Time{}
 }
 
-func (s *Schedule) GetConditions(st apis.ConditionScheduleType) []apis.StatusCondition {
+func (ss *ScheduleState) GetConditions(st apis.ConditionScheduleType) []apis.StatusCondition {
 	conditions := []apis.StatusCondition{}
 
-	if !s.fireAt.IsZero() {
+	if !ss.fireAt.IsZero() {
 		conditions = append(conditions, apis.StatusCondition{
 			Type:               apis.ConditionScheduled,
 			Status:             st,
-			LastTransitionTime: meta.NewTime(s.fireAt),
+			LastTransitionTime: meta.NewTime(ss.fireAt),
 		})
 	}
 
-	if !s.completedAt.IsZero() {
+	if !ss.completedAt.IsZero() {
 		conditions = append(conditions, apis.StatusCondition{
 			Type:               apis.ConditionCompleted,
 			Status:             st,
-			LastTransitionTime: meta.NewTime(s.completedAt),
+			LastTransitionTime: meta.NewTime(ss.completedAt),
 		})
 	}
 
-	if !s.failedAt.IsZero() {
+	if !ss.failedAt.IsZero() {
 		conditions = append(conditions, apis.StatusCondition{
 			Type:               apis.ConditionFailed,
 			Status:             st,
-			LastTransitionTime: meta.NewTime(s.failedAt),
+			LastTransitionTime: meta.NewTime(ss.failedAt),
 		})
 	}
 
 	return conditions
 }
 
-func (s *Schedule) Equals(other *Schedule) bool {
-	return reflect.DeepEqual(s.schedule, other.schedule) && s.override == other.override
+func (ss *ScheduleState) Equals(other *ScheduleState) bool {
+	return reflect.DeepEqual(ss.schedule, other.schedule) && ss.override == other.override
 }
 
-func (s *State) AddOrUpdate(key string, info *ScheduleState) {
+func (s *State) AddOrUpdate(key string, info *PolicyState) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
 	s.data[key] = info
 }
 
-func (s *State) Get(key string) (*ScheduleState, bool) {
+func (s *State) Get(key string) (*PolicyState, bool) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 

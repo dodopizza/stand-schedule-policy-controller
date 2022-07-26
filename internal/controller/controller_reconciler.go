@@ -43,7 +43,7 @@ func (c *Controller) reconcile(i interface{}) error {
 	return err
 }
 
-func (c *Controller) reschedule(policyName string, scheduleState *ScheduleState) {
+func (c *Controller) reschedule(policyName string, scheduleState *PolicyState) {
 	since := c.clock.Now()
 
 	c.schedule(since, policyName, apis.StatusShutdown, scheduleState.shutdown)
@@ -54,7 +54,7 @@ func (c *Controller) schedule(
 	since time.Time,
 	policyName string,
 	scheduleType apis.ConditionScheduleType,
-	schedule *Schedule,
+	schedule *ScheduleState,
 ) {
 	schedule.SetFiredSince(since)
 
