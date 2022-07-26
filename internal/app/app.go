@@ -73,9 +73,6 @@ func Run(l *zap.Logger, cfg *config.Config) {
 	}
 
 	app.logger.Info("Application stopping")
-	if err := app.controller.Shutdown(); err != nil {
-		app.logger.Error("Controller shutdown failure", zap.Error(err))
-	}
 	if err := app.server.Shutdown(); err != nil {
 		app.logger.Error("Http server shutdown failure", zap.Error(err))
 	}

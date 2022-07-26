@@ -81,12 +81,8 @@ func (c *Controller) Start(interrupt <-chan struct{}) {
 	c.reconciler.Start(interrupt)
 	c.executor.Start(interrupt)
 	c.logger.Info("Started workers")
-}
 
-func (c *Controller) Shutdown() error {
-	c.reconciler.Shutdown()
-	c.executor.Shutdown()
-	return nil
+	go c.handleShutdown(interrupt)
 }
 
 func (c *Controller) Notify() <-chan error {
@@ -103,4 +99,12 @@ func (c *Controller) handleCachesDesyncFor(name string) {
 	// critical error, notify about it
 	c.notify <- err
 	close(c.notify)
+}
+
+func (c *Controller) handleShutdown(interrupt <-chan struct{}) {
+	<-interrupt
+
+	c.logger.Info("Shutting down workers")
+	c.reconciler.Shutdown()
+	c.executor.Shutdown()
 }

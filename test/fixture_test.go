@@ -43,7 +43,8 @@ type (
 		kube       kubernetes.Interface
 		policies   map[string]struct{}
 		namespaces map[string]struct{}
-		dryRun     bool
+		cleanup    bool
+		interrupt  chan struct{}
 		controller *controller.Controller
 	}
 	azure struct{}
@@ -65,6 +66,8 @@ func NewFixture(t *testing.T) *fixture {
 		t.Fatal(err)
 	}
 
+	cleanup := NewFixtureCleanup(t, k)
+
 	return &fixture{
 		cfg: &controller.Config{
 			ResyncSeconds:          10,
@@ -75,9 +78,9 @@ func NewFixture(t *testing.T) *fixture {
 		azure:     &azure{},
 		clock:     clock.NewFakeClock(_Time),
 		logger:    l,
-		interrupt: make(chan struct{}),
+		interrupt: cleanup.interrupt,
 		t:         t,
-		cleanup:   NewFixtureCleanup(t, k),
+		cleanup:   cleanup,
 	}
 }
 
@@ -85,8 +88,10 @@ func NewFixtureCleanup(t *testing.T, k kubernetes.Interface) *fixtureCleanup {
 	f := &fixtureCleanup{
 		t:          t,
 		kube:       k,
+		interrupt:  make(chan struct{}),
 		policies:   make(map[string]struct{}, 0),
 		namespaces: make(map[string]struct{}, 0),
+		cleanup:    true,
 	}
 	t.Cleanup(f.Handler)
 
@@ -170,7 +175,7 @@ func (f *fixture) WithPolicies(policies ...*apis.StandSchedulePolicy) *fixture {
 }
 
 func (f *fixture) WithoutCleanup() *fixture {
-	f.cleanup.dryRun = true
+	f.cleanup.cleanup = false
 	return f
 }
 
@@ -234,7 +239,9 @@ func (f *fixtureCleanup) AddNamespace(namespace *core.Namespace) {
 }
 
 func (f *fixtureCleanup) Handler() {
-	if f.dryRun {
+	f.interrupt <- struct{}{}
+
+	if !f.cleanup {
 		return
 	}
 
@@ -260,10 +267,5 @@ func (f *fixtureCleanup) Handler() {
 		if err != nil {
 			f.t.Fatal(err)
 		}
-	}
-
-	err := f.controller.Shutdown()
-	if err != nil {
-		f.t.Fatal(err)
 	}
 }
