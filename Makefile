@@ -87,7 +87,9 @@ test-integration: ## Run all integration tests
 	TEST_KUBECONFIG_PATH="${INTEGRATION_TEST_KIND_CLUSTER_CONFIG}" go test \
 	-v \
 	-timeout 300s \
-	--tags=integration ./test/...
+	--tags=integration \
+	-parallel 1 \
+	./test/...
 
 .PHONY: run
 run: build ## Run app locally

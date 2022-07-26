@@ -89,8 +89,10 @@ func (f *fixture) AssertResourceQuotaNotExists(namespace string) {
 func Test_StartController(t *testing.T) {
 	f := NewFixture(t)
 
+	c := f.CreateController()
+
 	f.AssertKubernetesClient()
-	f.AssertControllerStarted(f.CreateController())
+	f.AssertControllerStarted(c)
 }
 
 func Test_PolicyWithShutdown(t *testing.T) {
@@ -125,15 +127,15 @@ func Test_PolicyWithShutdown(t *testing.T) {
 
 func Test_PolicyWithStartup(t *testing.T) {
 	f := NewFixture(t).
-		WithNamespaces("namespace1").
-		WithZeroQuota("namespace1").
+		WithNamespaces("namespace2").
+		WithZeroQuota("namespace2").
 		WithPolicies(
 			&apis.StandSchedulePolicy{
 				ObjectMeta: meta.ObjectMeta{
 					Name: "test-policy",
 				},
 				Spec: apis.StandSchedulePolicySpec{
-					TargetNamespaceFilter: "namespace1",
+					TargetNamespaceFilter: "namespace2",
 					Schedules: apis.SchedulesSpec{
 						Startup:  apis.CronSchedule{Cron: "* * * * *"},
 						Shutdown: apis.CronSchedule{Cron: "@yearly"},
@@ -151,20 +153,20 @@ func Test_PolicyWithStartup(t *testing.T) {
 	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusStartup)
 	f.IncreaseTime(time.Minute * 2)
 	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusStartup)
-	f.AssertResourceQuotaNotExists("namespace1")
+	f.AssertResourceQuotaNotExists("namespace2")
 }
 
 func Test_PolicyWithShutdownOverride(t *testing.T) {
 	f := NewFixture(t).
-		WithNamespaces("namespace1").
-		WithPods(podObject("namespace1", "test-pod-1")).
+		WithNamespaces("namespace3").
+		WithPods(podObject("namespace3", "test-pod-1")).
 		WithPolicies(
 			&apis.StandSchedulePolicy{
 				ObjectMeta: meta.ObjectMeta{
 					Name: "test-policy",
 				},
 				Spec: apis.StandSchedulePolicySpec{
-					TargetNamespaceFilter: "namespace1",
+					TargetNamespaceFilter: "namespace3",
 					Schedules: apis.SchedulesSpec{
 						Startup: apis.CronSchedule{Cron: "@yearly"},
 						Shutdown: apis.CronSchedule{
@@ -184,20 +186,20 @@ func Test_PolicyWithShutdownOverride(t *testing.T) {
 	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusShutdown)
 	f.IncreaseTime(time.Minute * 2)
 	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusShutdown)
-	f.AssertNamespaceEmptyOrPodsTerminated("namespace1")
+	f.AssertNamespaceEmptyOrPodsTerminated("namespace3")
 }
 
 func Test_PolicyWithStartupOverride(t *testing.T) {
 	f := NewFixture(t).
-		WithNamespaces("namespace1").
-		WithZeroQuota("namespace1").
+		WithNamespaces("namespace4").
+		WithZeroQuota("namespace4").
 		WithPolicies(
 			&apis.StandSchedulePolicy{
 				ObjectMeta: meta.ObjectMeta{
 					Name: "test-policy",
 				},
 				Spec: apis.StandSchedulePolicySpec{
-					TargetNamespaceFilter: "namespace1",
+					TargetNamespaceFilter: "namespace4",
 					Schedules: apis.SchedulesSpec{
 						Startup: apis.CronSchedule{
 							Cron:     "@yearly",
@@ -217,21 +219,21 @@ func Test_PolicyWithStartupOverride(t *testing.T) {
 	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusStartup)
 	f.IncreaseTime(time.Minute * 2)
 	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusStartup)
-	f.AssertResourceQuotaNotExists("namespace1")
+	f.AssertResourceQuotaNotExists("namespace4")
 }
 
 func Test_PolicyWithShutdownStartup(t *testing.T) {
 	f := NewFixture(t).
 		WithClockTime(_Time.Round(time.Minute * 10)).
-		WithNamespaces("namespace1").
-		WithPods(podObject("namespace1", "test-pod-1")).
+		WithNamespaces("namespace5").
+		WithPods(podObject("namespace5", "test-pod-1")).
 		WithPolicies(
 			&apis.StandSchedulePolicy{
 				ObjectMeta: meta.ObjectMeta{
 					Name: "test-policy",
 				},
 				Spec: apis.StandSchedulePolicySpec{
-					TargetNamespaceFilter: "namespace1",
+					TargetNamespaceFilter: "namespace5",
 					Schedules: apis.SchedulesSpec{
 						Startup:  apis.CronSchedule{Cron: "0/5 * * * *"},
 						Shutdown: apis.CronSchedule{Cron: "0/3 * * * *"},
@@ -253,12 +255,12 @@ func Test_PolicyWithShutdownStartup(t *testing.T) {
 	// increase time to trigger shutdown policy & assert
 	f.IncreaseTime(time.Minute * 3)
 	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusShutdown)
-	f.AssertNamespaceEmptyOrPodsTerminated("namespace1")
+	f.AssertNamespaceEmptyOrPodsTerminated("namespace5")
 
 	// increase time to trigger startup policy & assert
 	f.IncreaseTime(time.Minute * 2)
 	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusStartup)
-	f.AssertResourceQuotaNotExists("namespace-1")
+	f.AssertResourceQuotaNotExists("namespace5")
 
 	// increase time to > half of shutdown interval & assert shutdown scheduled
 	f.IncreaseTime(time.Minute * 1)
@@ -272,15 +274,15 @@ func Test_PolicyWithShutdownStartup(t *testing.T) {
 func Test_PolicyWithOverrides(t *testing.T) {
 	f := NewFixture(t).
 		WithClockTime(_Time.Round(time.Minute * 10)).
-		WithNamespaces("namespace1").
-		WithPods(podObject("namespace1", "test-pod-1")).
+		WithNamespaces("namespace6").
+		WithPods(podObject("namespace6", "test-pod-1")).
 		WithPolicies(
 			&apis.StandSchedulePolicy{
 				ObjectMeta: meta.ObjectMeta{
 					Name: "test-policy",
 				},
 				Spec: apis.StandSchedulePolicySpec{
-					TargetNamespaceFilter: "namespace1",
+					TargetNamespaceFilter: "namespace6",
 					Schedules: apis.SchedulesSpec{
 						Startup: apis.CronSchedule{
 							Override: _Time.Add(time.Minute * 5).Format(time.RFC3339),
@@ -306,12 +308,12 @@ func Test_PolicyWithOverrides(t *testing.T) {
 	// increase time to trigger shutdown policy & assert
 	f.IncreaseTime(time.Minute * 2)
 	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusShutdown)
-	f.AssertNamespaceEmptyOrPodsTerminated("namespace1")
+	f.AssertNamespaceEmptyOrPodsTerminated("namespace6")
 
 	// increase time to trigger startup policy & assert
 	f.IncreaseTime(time.Minute * 3)
 	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusStartup)
-	f.AssertResourceQuotaNotExists("namespace-1")
+	f.AssertResourceQuotaNotExists("namespace6")
 
 	// increase time and verify policy remains completed
 	f.IncreaseTime(time.Minute * 5)

@@ -17,6 +17,7 @@ import (
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/controller"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/kubernetes"
 	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
+	"github.com/dodopizza/stand-schedule-policy-controller/pkg/util"
 )
 
 var (
@@ -43,6 +44,7 @@ type (
 		policies   map[string]struct{}
 		namespaces map[string]struct{}
 		dryRun     bool
+		controller *controller.Controller
 	}
 	azure struct{}
 )
@@ -173,7 +175,8 @@ func (f *fixture) WithoutCleanup() *fixture {
 }
 
 func (f *fixture) CreateController() *controller.Controller {
-	return controller.NewController(f.cfg, f.logger, f.clock, f.kube, f.azure)
+	f.cleanup.controller = controller.NewController(f.cfg, f.logger, f.clock, f.kube, f.azure)
+	return f.cleanup.controller
 }
 
 func (f *fixture) IncreaseTime(d time.Duration) {
@@ -235,14 +238,12 @@ func (f *fixtureCleanup) Handler() {
 		return
 	}
 
-	dp := meta.DeletePropagationForeground
-
 	for policy := range f.policies {
 		err := f.kube.StandSchedulesClient().
 			StandSchedulesV1().
 			StandSchedulePolicies().
 			Delete(context.Background(), policy, meta.DeleteOptions{
-				PropagationPolicy: &dp,
+				PropagationPolicy: util.Pointer(meta.DeletePropagationForeground),
 			})
 		if err != nil {
 			f.t.Fatal(err)
@@ -254,10 +255,15 @@ func (f *fixtureCleanup) Handler() {
 			CoreV1().
 			Namespaces().
 			Delete(context.Background(), namespace, meta.DeleteOptions{
-				PropagationPolicy: &dp,
+				PropagationPolicy: util.Pointer(meta.DeletePropagationForeground),
 			})
 		if err != nil {
 			f.t.Fatal(err)
 		}
+	}
+
+	err := f.controller.Shutdown()
+	if err != nil {
+		f.t.Fatal(err)
 	}
 }
