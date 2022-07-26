@@ -233,8 +233,8 @@ func Test_PolicyWithShutdownStartup(t *testing.T) {
 				Spec: apis.StandSchedulePolicySpec{
 					TargetNamespaceFilter: "namespace1",
 					Schedules: apis.SchedulesSpec{
-						Startup:  apis.CronSchedule{Cron: "5 * * * *"},
-						Shutdown: apis.CronSchedule{Cron: "3 * * * *"},
+						Startup:  apis.CronSchedule{Cron: "0/5 * * * *"},
+						Shutdown: apis.CronSchedule{Cron: "0/3 * * * *"},
 					},
 					Resources: apis.ResourcesSpec{
 						Azure: []apis.AzureResource{},
