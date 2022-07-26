@@ -49,24 +49,27 @@ type StandSchedulePolicySpec struct {
 	// TargetNamespaceFilter defines regex filter to match namespaces to process.
 	TargetNamespaceFilter string `json:"targetNamespaceFilter"`
 
-	// Schedule contains schedule spec.
-	Schedule ScheduleSpec `json:"schedule"`
+	// Schedules contains schedules spec.
+	Schedules SchedulesSpec `json:"schedule"`
 
 	// Resources contains external resources spec.
 	Resources ResourcesSpec `json:"resources"`
 }
 
-// ScheduleSpec defines startup and shutdown schedules of a policy.
-type ScheduleSpec struct {
-	// Startup defines schedule in cron format for stand startup.
-	Startup string `json:"startup"`
+// SchedulesSpec defines supported schedules for policy.
+type SchedulesSpec struct {
+	// Startup defines schedule for startup.
+	Startup CronSchedule `json:"startup"`
 
-	// StartupOverride defines override for startup schedule as time string
-	StartupOverride string `json:"startupOverride,omitempty"`
+	// Shutdown defines schedule for shutdown.
+	Shutdown CronSchedule `json:"shutdown"`
+}
 
-	// Shutdown defines schedule in cron format for stand shutdown.
-	Shutdown string `json:"shutdown"`
+// CronSchedule defines schedule (as cron) and optional override (as time string).
+type CronSchedule struct {
+	// Cron is a cron format schedule.
+	Cron string `json:"cron"`
 
-	// StartupOverride defines override for shutdown schedule as time string
-	ShutdownOverride string `json:"shutdownOverride,omitempty"`
+	// Override is an override as time string (formatted as FRC3339)
+	Override string `json:"override"`
 }

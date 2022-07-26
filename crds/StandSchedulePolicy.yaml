@@ -73,16 +73,36 @@ spec:
                 - azure
                 type: object
               schedule:
-                description: Schedule contains schedule spec.
+                description: Schedules contains schedules spec.
                 properties:
                   shutdown:
-                    description: Shutdown defines schedule in cron format for stand
-                      shutdown.
-                    type: string
+                    description: Shutdown defines schedule for shutdown.
+                    properties:
+                      cron:
+                        description: Cron is a cron format schedule.
+                        type: string
+                      override:
+                        description: Override is an override as time string (formatted
+                          as FRC3339)
+                        type: string
+                    required:
+                    - cron
+                    - override
+                    type: object
                   startup:
-                    description: Startup defines schedule in cron format for stand
-                      startup.
-                    type: string
+                    description: Startup defines schedule for startup.
+                    properties:
+                      cron:
+                        description: Cron is a cron format schedule.
+                        type: string
+                      override:
+                        description: Override is an override as time string (formatted
+                          as FRC3339)
+                        type: string
+                    required:
+                    - cron
+                    - override
+                    type: object
                 required:
                 - shutdown
                 - startup
