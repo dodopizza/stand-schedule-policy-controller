@@ -18,7 +18,6 @@ func (c *Controller) add(obj *apis.StandSchedulePolicy) {
 
 	c.logger.Info("Added policy object with name", zap.String("policy_name", obj.Name))
 	c.state.AddOrUpdate(obj.Name, state)
-	c.reschedule(obj.Name, state)
 	c.reconciler.Enqueue(obj.Name)
 }
 
@@ -37,7 +36,6 @@ func (c *Controller) update(oldObj, newObj *apis.StandSchedulePolicy) {
 
 	if !oldState.ScheduleEquals(newState) {
 		c.state.AddOrUpdate(newObj.Name, newState)
-		c.reschedule(newObj.Name, newState)
 	}
 
 	c.reconciler.Enqueue(newObj.Name)

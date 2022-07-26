@@ -26,6 +26,8 @@ func (c *Controller) reconcile(i interface{}) error {
 		return nil
 	}
 
+	c.scheduleIfRequired(policy, state)
+
 	c.logger.Info("Update policy status", zap.String("policy_name", policy.Name))
 	policy.Status.Conditions = state.GetConditions()
 
@@ -43,33 +45,38 @@ func (c *Controller) reconcile(i interface{}) error {
 	return err
 }
 
-func (c *Controller) reschedule(policyName string, scheduleState *PolicyState) {
-	since := c.clock.Now()
+func (c *Controller) scheduleIfRequired(policy *apis.StandSchedulePolicy, state *PolicyState) {
+	ts := c.clock.Now()
 
-	c.schedule(since, policyName, apis.StatusShutdown, scheduleState.shutdown)
-	c.schedule(since, policyName, apis.StatusStartup, scheduleState.startup)
+	if state.shutdown.ScheduleRequired(ts) {
+		c.schedule(ts, policy.Name, apis.StatusShutdown, state.shutdown)
+	}
+
+	if state.startup.ScheduleRequired(ts) {
+		c.schedule(ts, policy.Name, apis.StatusStartup, state.startup)
+	}
 }
 
 func (c *Controller) schedule(
-	since time.Time,
+	ts time.Time,
 	policyName string,
 	scheduleType apis.ConditionScheduleType,
 	schedule *ScheduleState,
 ) {
-	schedule.SetFiredSince(since)
+	schedule.SetFiredSince(ts)
 
 	if schedule.fireAt.IsZero() {
 		c.logger.Error("Failed to schedule policy",
 			zap.String("policy_name", policyName),
 			zap.String("schedule_type", string(scheduleType)),
-			zap.Stringer("since", since))
+			zap.Stringer("since", ts))
 		return
 	}
 
 	c.logger.Info("Schedule policy",
 		zap.String("policy_name", policyName),
 		zap.String("schedule_type", string(scheduleType)),
-		zap.Stringer("since", since),
+		zap.Stringer("since", ts),
 		zap.Stringer("at", schedule.fireAt))
 
 	item := WorkItem{
@@ -78,5 +85,5 @@ func (c *Controller) schedule(
 		fireAt:       schedule.fireAt,
 	}
 
-	c.executor.EnqueueAfter(item, schedule.fireAt.Sub(since))
+	c.executor.EnqueueAfter(item, schedule.fireAt.Sub(ts))
 }

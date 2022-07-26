@@ -105,7 +105,14 @@ func (ps *PolicyState) GetConditions() []apis.StatusCondition {
 	return conditions
 }
 
-func (ss *ScheduleState) GetNextTimeAfter(since time.Time) time.Time {
+func (ss *ScheduleState) GetExecutedTime() time.Time {
+	if !ss.completedAt.IsZero() {
+		return ss.completedAt
+	}
+	return ss.failedAt
+}
+
+func (ss *ScheduleState) GetNextExecutionTime(since time.Time) time.Time {
 	// todo: store when override expires ?
 
 	if ss.override.After(since) {
@@ -116,7 +123,7 @@ func (ss *ScheduleState) GetNextTimeAfter(since time.Time) time.Time {
 }
 
 func (ss *ScheduleState) SetFiredSince(since time.Time) {
-	ss.fireAt = ss.GetNextTimeAfter(since)
+	ss.fireAt = ss.GetNextExecutionTime(since)
 	ss.failedAt = time.Time{}
 	ss.completedAt = time.Time{}
 }
@@ -159,6 +166,26 @@ func (ss *ScheduleState) GetConditions(st apis.ConditionScheduleType) []apis.Sta
 	}
 
 	return conditions
+}
+
+func (ss *ScheduleState) ScheduleRequired(current time.Time) bool {
+	// not scheduled at all
+	if ss.fireAt.IsZero() {
+		return true
+	}
+
+	executed := ss.GetExecutedTime()
+
+	// already scheduled but not executed
+	if executed.IsZero() {
+		return false
+	}
+
+	// schedule when current > (next - executed) / 2
+	next := ss.GetNextExecutionTime(current)
+	delta := next.Sub(executed) / 2
+
+	return current.After(executed.Add(delta))
 }
 
 func (ss *ScheduleState) Equals(other *ScheduleState) bool {

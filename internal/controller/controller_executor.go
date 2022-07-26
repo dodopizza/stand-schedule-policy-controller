@@ -19,7 +19,6 @@ import (
 )
 
 // todo: handle external resources
-// todo: reschedule after completion
 // todo: check workitem.fireat and schedule.fireat
 
 type (
