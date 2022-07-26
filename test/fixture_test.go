@@ -229,11 +229,15 @@ func (f *fixtureCleanup) Handler() {
 		return
 	}
 
+	dp := meta.DeletePropagationForeground
+
 	for policy := range f.policies {
 		err := f.kube.StandSchedulesClient().
 			StandSchedulesV1().
 			StandSchedulePolicies().
-			Delete(context.Background(), policy, meta.DeleteOptions{})
+			Delete(context.Background(), policy, meta.DeleteOptions{
+				PropagationPolicy: &dp,
+			})
 		if err != nil {
 			f.t.Fatal(err)
 		}
@@ -243,7 +247,9 @@ func (f *fixtureCleanup) Handler() {
 		err := f.kube.CoreClient().
 			CoreV1().
 			Namespaces().
-			Delete(context.Background(), namespace, meta.DeleteOptions{})
+			Delete(context.Background(), namespace, meta.DeleteOptions{
+				PropagationPolicy: &dp,
+			})
 		if err != nil {
 			f.t.Fatal(err)
 		}

@@ -48,7 +48,7 @@ func (f *fixture) AssertControllerStarted(c *controller.Controller) {
 	}
 }
 
-func (f *fixture) AssertNamespaceEmpty(namespace string) {
+func (f *fixture) AssertNamespaceEmptyOrPodsTerminated(namespace string) {
 	pods, err := f.kube.CoreClient().
 		CoreV1().
 		Pods(namespace).
@@ -57,8 +57,16 @@ func (f *fixture) AssertNamespaceEmpty(namespace string) {
 		f.t.Error(err)
 	}
 
-	if len(pods.Items) != 0 {
-		f.t.Errorf("In namespace %s exists %d pods", namespace, len(pods.Items))
+	if len(pods.Items) == 0 {
+		return
+	}
+
+	for _, pod := range pods.Items {
+		for _, cs := range pod.Status.ContainerStatuses {
+			if cs.State.Terminated == nil {
+				f.t.Errorf("pod %s/%s container %s not in terminated state", pod.Namespace, pod.Name, cs.Name)
+			}
+		}
 	}
 }
 
@@ -112,7 +120,7 @@ func Test_PolicyWithShutdown(t *testing.T) {
 	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusShutdown)
 	f.IncreaseTime(time.Minute * 2)
 	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusShutdown)
-	f.AssertNamespaceEmpty("namespace1")
+	f.AssertNamespaceEmptyOrPodsTerminated("namespace1")
 }
 
 func Test_PolicyWithStartup(t *testing.T) {
@@ -176,7 +184,7 @@ func Test_PolicyWithShutdownOverride(t *testing.T) {
 	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusShutdown)
 	f.IncreaseTime(time.Minute * 2)
 	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusShutdown)
-	f.AssertNamespaceEmpty("namespace1")
+	f.AssertNamespaceEmptyOrPodsTerminated("namespace1")
 }
 
 func Test_PolicyWithStartupOverride(t *testing.T) {
