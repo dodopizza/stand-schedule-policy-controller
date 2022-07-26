@@ -46,29 +46,10 @@ func (ss *ScheduleState) GetFireTime() time.Time {
 }
 
 func (ss *ScheduleState) GetNextExecutionTime(since time.Time) time.Time {
-	// todo: store when override expires ?
-
 	if ss.override.After(since) {
 		return ss.override
 	}
-
 	return ss.schedule.Next(since)
-}
-
-func (ss *ScheduleState) SetFiredAfter(ts time.Time) {
-	ss.fireAt = ss.GetNextExecutionTime(ts)
-	ss.failedAt = time.Time{}
-	ss.completedAt = time.Time{}
-}
-
-func (ss *ScheduleState) SetCompleted(at time.Time) {
-	ss.completedAt = at
-	ss.failedAt = time.Time{}
-}
-
-func (ss *ScheduleState) SetFailed(at time.Time) {
-	ss.failedAt = at
-	ss.completedAt = time.Time{}
 }
 
 func (ss *ScheduleState) GetConditions(st apis.ConditionScheduleType) []apis.StatusCondition {
@@ -99,6 +80,22 @@ func (ss *ScheduleState) GetConditions(st apis.ConditionScheduleType) []apis.Sta
 	}
 
 	return conditions
+}
+
+func (ss *ScheduleState) SetFiredAfter(ts time.Time) {
+	ss.fireAt = ss.GetNextExecutionTime(ts)
+	ss.failedAt = time.Time{}
+	ss.completedAt = time.Time{}
+}
+
+func (ss *ScheduleState) SetCompleted(at time.Time) {
+	ss.completedAt = at
+	ss.failedAt = time.Time{}
+}
+
+func (ss *ScheduleState) SetFailed(at time.Time) {
+	ss.failedAt = at
+	ss.completedAt = time.Time{}
 }
 
 func (ss *ScheduleState) ScheduleRequired(current time.Time) bool {

@@ -129,7 +129,7 @@ func (c *Controller) executeShutdown(policy *apis.StandSchedulePolicy) error {
 				},
 			},
 		}
-		quota, err = c.kube.CoreClient().
+		_, err = c.kube.CoreClient().
 			CoreV1().
 			ResourceQuotas(namespace).
 			Create(context.Background(), quota, meta.CreateOptions{})
