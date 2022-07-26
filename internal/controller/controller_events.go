@@ -3,6 +3,7 @@ package controller
 import (
 	"go.uber.org/zap"
 
+	"github.com/dodopizza/stand-schedule-policy-controller/internal/state"
 	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
 )
 
@@ -10,25 +11,25 @@ import (
 
 func (c *Controller) add(obj *apis.StandSchedulePolicy) {
 	c.logger.Debug("Discovered policy object with name", zap.String("policy_name", obj.Name))
-	state, err := NewPolicyState(obj)
+	ps, err := state.NewPolicyState(obj)
 	if err != nil {
 		c.logger.Error("Policy object with name has invalid format", zap.String("policy_name", obj.Name), zap.Error(err))
 		return
 	}
 
 	c.logger.Info("Added policy object with name", zap.String("policy_name", obj.Name))
-	c.state.AddOrUpdate(obj.Name, state)
+	c.state.AddOrUpdate(obj.Name, ps)
 	c.reconciler.Enqueue(obj.Name)
 }
 
 func (c *Controller) update(oldObj, newObj *apis.StandSchedulePolicy) {
 	c.logger.Info("Sync policy object with name", zap.String("policy_name", newObj.Name))
-	oldState, err := NewPolicyState(newObj)
+	oldState, err := state.NewPolicyState(newObj)
 	if err != nil {
 		c.logger.Error("Policy object with name has invalid format", zap.String("policy_name", oldObj.Name), zap.Error(err))
 		return
 	}
-	newState, err := NewPolicyState(newObj)
+	newState, err := state.NewPolicyState(newObj)
 	if err != nil {
 		c.logger.Error("Policy object with name has invalid format", zap.String("policy_name", newObj.Name), zap.Error(err))
 		return

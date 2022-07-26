@@ -10,6 +10,7 @@ import (
 
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/azure"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/kubernetes"
+	"github.com/dodopizza/stand-schedule-policy-controller/internal/state"
 	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
 	"github.com/dodopizza/stand-schedule-policy-controller/pkg/eventsource"
 	"github.com/dodopizza/stand-schedule-policy-controller/pkg/worker"
@@ -22,7 +23,7 @@ type (
 		kube       kubernetes.Interface
 		azure      azure.Interface
 		clock      clock.WithTicker
-		state      *State
+		state      *state.State
 		reconciler *worker.Worker
 		executor   *worker.Worker
 		factory    *FactoryGroup
@@ -44,7 +45,7 @@ func NewController(
 		kube:   k,
 		azure:  az,
 		clock:  clock,
-		state:  NewControllerState(),
+		state:  state.New(),
 	}
 	c.factory = NewFactoryGroup(k, cfg)
 	c.lister = NewListerGroup(c.factory)

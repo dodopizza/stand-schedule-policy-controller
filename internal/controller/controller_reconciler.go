@@ -8,6 +8,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/dodopizza/stand-schedule-policy-controller/internal/state"
 	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
 )
 
@@ -20,16 +21,16 @@ func (c *Controller) reconcile(i interface{}) error {
 		return nil
 	}
 
-	state, exists := c.state.Get(policy.Name)
+	ps, exists := c.state.Get(policy.Name)
 	if !exists {
 		c.logger.Info("Deleted policy with name removed from execution", zap.String("policy_name", policy.Name))
 		return nil
 	}
 
-	c.scheduleIfRequired(policy, state)
+	c.scheduleIfRequired(policy, ps)
 
 	c.logger.Info("Update policy status", zap.String("policy_name", policy.Name))
-	policy.Status.Conditions = state.GetConditions()
+	policy.Status.Conditions = ps.GetConditions()
 
 	_, err = c.kube.StandSchedulesClient().
 		StandSchedulesV1().
@@ -45,15 +46,15 @@ func (c *Controller) reconcile(i interface{}) error {
 	return err
 }
 
-func (c *Controller) scheduleIfRequired(policy *apis.StandSchedulePolicy, state *PolicyState) {
+func (c *Controller) scheduleIfRequired(policy *apis.StandSchedulePolicy, ps *state.PolicyState) {
 	ts := c.clock.Now()
 
-	if state.shutdown.ScheduleRequired(ts) {
-		c.schedule(ts, policy.Name, apis.StatusShutdown, state.shutdown)
+	if ps.Shutdown.ScheduleRequired(ts) {
+		c.schedule(ts, policy.Name, apis.StatusShutdown, ps.Shutdown)
 	}
 
-	if state.startup.ScheduleRequired(ts) {
-		c.schedule(ts, policy.Name, apis.StatusStartup, state.startup)
+	if ps.Startup.ScheduleRequired(ts) {
+		c.schedule(ts, policy.Name, apis.StatusStartup, ps.Startup)
 	}
 }
 
@@ -61,11 +62,11 @@ func (c *Controller) schedule(
 	ts time.Time,
 	policyName string,
 	scheduleType apis.ConditionScheduleType,
-	schedule *ScheduleState,
+	schedule *state.ScheduleState,
 ) {
 	schedule.SetFiredSince(ts)
 
-	if schedule.fireAt.IsZero() {
+	if schedule.FireAt.IsZero() {
 		c.logger.Error("Failed to schedule policy",
 			zap.String("policy_name", policyName),
 			zap.String("schedule_type", string(scheduleType)),
@@ -77,13 +78,13 @@ func (c *Controller) schedule(
 		zap.String("policy_name", policyName),
 		zap.String("schedule_type", string(scheduleType)),
 		zap.Stringer("since", ts),
-		zap.Stringer("at", schedule.fireAt))
+		zap.Stringer("at", schedule.FireAt))
 
 	item := WorkItem{
 		policyName:   policyName,
 		scheduleType: scheduleType,
-		fireAt:       schedule.fireAt,
+		fireAt:       schedule.FireAt,
 	}
 
-	c.executor.EnqueueAfter(item, schedule.fireAt.Sub(ts))
+	c.executor.EnqueueAfter(item, schedule.FireAt.Sub(ts))
 }
