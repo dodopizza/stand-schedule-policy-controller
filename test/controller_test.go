@@ -219,3 +219,52 @@ func Test_PolicyWithStartupOverride(t *testing.T) {
 	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusStartup)
 	f.AssertResourceQuotaNotExists("namespace1")
 }
+
+func Test_PolicyWithShutdownStartup(t *testing.T) {
+	f := NewFixture(t).
+		WithClockTime(_Time.Round(time.Minute * 10)).
+		WithNamespaces("namespace1").
+		WithPods(podObject("namespace1", "test-pod-1")).
+		WithPolicies(
+			&apis.StandSchedulePolicy{
+				ObjectMeta: meta.ObjectMeta{
+					Name: "test-policy",
+				},
+				Spec: apis.StandSchedulePolicySpec{
+					TargetNamespaceFilter: "namespace1",
+					Schedule: apis.ScheduleSpec{
+						Startup:  "5 * * * *",
+						Shutdown: "3 * * * *",
+					},
+					Resources: apis.ResourcesSpec{
+						Azure: []apis.AzureResource{},
+					},
+				},
+			},
+		)
+
+	c := f.CreateController()
+	f.AssertControllerStarted(c)
+
+	// wait to policies scheduled
+	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusShutdown)
+	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusStartup)
+
+	// increase time to trigger shutdown policy & assert
+	f.IncreaseTime(time.Minute * 3)
+	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusShutdown)
+	f.AssertNamespaceEmptyOrPodsTerminated("namespace1")
+
+	// increase time to trigger startup policy & assert
+	f.IncreaseTime(time.Minute * 2)
+	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusStartup)
+	f.AssertResourceQuotaNotExists("namespace-1")
+
+	// increase time to > half of shutdown interval & assert shutdown scheduled
+	f.IncreaseTime(time.Minute * 1)
+	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusShutdown)
+
+	// increase time to > half of startup interval & assert startup scheduled
+	f.IncreaseTime(time.Minute * 3)
+	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusStartup)
+}

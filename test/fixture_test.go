@@ -91,6 +91,12 @@ func NewFixtureCleanup(t *testing.T, k kubernetes.Interface) *fixtureCleanup {
 	return f
 }
 
+func (f *fixture) WithClockTime(ts time.Time) *fixture {
+	_Time = ts
+	f.clock = clock.NewFakeClock(_Time)
+	return f
+}
+
 func (f *fixture) WithNamespaces(namespaces ...string) *fixture {
 	for _, ns := range namespaces {
 		namespace := &core.Namespace{
