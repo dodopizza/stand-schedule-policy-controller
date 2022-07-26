@@ -121,7 +121,7 @@ func Test_GetConditions(t *testing.T) {
 	}, schedule.GetConditions(apis.StatusShutdown))
 }
 
-func Test_ScheduleRequired(t *testing.T) {
+func Test_ScheduleRequiredCron(t *testing.T) {
 	ts := time.Now().Round(time.Minute)
 	schedule, err := NewSchedule(apis.CronSchedule{Cron: "* * * * *"})
 	if err != nil {
@@ -146,4 +146,32 @@ func Test_ScheduleRequired(t *testing.T) {
 
 	// schedule required after fire + 10 + 30 secs (40 > 1 min / 2)
 	assert.True(t, schedule.ScheduleRequired(completed.Add(time.Second*30)))
+}
+
+func Test_ScheduleRequiredOverride(t *testing.T) {
+	ts := time.Now().Round(time.Minute)
+	schedule, err := NewSchedule(
+		apis.CronSchedule{
+			Override: ts.Add(time.Minute * 2).Format(time.RFC3339),
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.True(t, schedule.ScheduleRequired(ts))
+
+	schedule.SetFiredAfter(ts)
+	assert.False(t, schedule.ScheduleRequired(ts))
+
+	// next fire time will be after 2 mins since ts
+	fire := ts.Add(time.Minute * 2)
+
+	// complete after 10 secs since fire
+	completed := fire.Add(time.Second * 10)
+
+	schedule.SetCompleted(completed)
+
+	// no schedule required after fire
+	assert.False(t, schedule.ScheduleRequired(completed.Add(time.Minute*1)))
 }

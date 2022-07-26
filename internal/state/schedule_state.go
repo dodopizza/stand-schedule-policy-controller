@@ -21,12 +21,25 @@ type (
 )
 
 func NewSchedule(schedule apis.CronSchedule) (*ScheduleState, error) {
-	sc, err := cron.ParseStandard(schedule.Cron)
+	var (
+		err error
+		ov  time.Time
+		sc  cron.Schedule
+	)
+
+	if schedule.Cron != "" {
+		sc, err = cron.ParseStandard(schedule.Cron)
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	ov, _ := time.Parse(time.RFC3339, schedule.Override)
+	if schedule.Override != "" {
+		ov, err = time.Parse(time.RFC3339, schedule.Override)
+	}
+	if err != nil {
+		return nil, err
+	}
 
 	return &ScheduleState{
 		schedule: sc,
@@ -49,7 +62,12 @@ func (ss *ScheduleState) GetNextExecutionTime(since time.Time) time.Time {
 	if ss.override.After(since) {
 		return ss.override
 	}
-	return ss.schedule.Next(since)
+
+	if ss.schedule != nil {
+		return ss.schedule.Next(since)
+	}
+
+	return time.Time{}
 }
 
 func (ss *ScheduleState) GetConditions(st apis.ConditionScheduleType) []apis.StatusCondition {
@@ -113,6 +131,12 @@ func (ss *ScheduleState) ScheduleRequired(current time.Time) bool {
 
 	// schedule when current > (next - executed) / 2
 	next := ss.GetNextExecutionTime(current)
+
+	// next schedule not supported
+	if next.IsZero() {
+		return false
+	}
+
 	delta := next.Sub(executed) / 2
 
 	return current.After(executed.Add(delta))
