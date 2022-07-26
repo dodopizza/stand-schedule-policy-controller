@@ -60,6 +60,13 @@ push-docker: build-docker ## Build app locally and push docker image
 .PHONY: test
 test: test-integration ## Run all tests
 
+.PHONY: test-unit
+test-unit: ## Run unit tests
+	go test \
+	-v \
+	-timeout 30s \
+	./...
+
 .PHONY: test-integration-setup
 test-integration-setup: ## Setup environment for integration tests
 	kind create cluster \
