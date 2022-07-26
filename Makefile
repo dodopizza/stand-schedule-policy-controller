@@ -58,7 +58,7 @@ push-docker: build-docker ## Build app locally and push docker image
 	docker push "${DOCKER_IMAGE_REPO}:${DOCKER_IMAGE_COMMIT_SHA}"
 
 .PHONY: test
-test: test-integration ## Run all tests
+test: test-unit test-integration ## Run all tests
 
 .PHONY: test-unit
 test-unit: ## Run unit tests
