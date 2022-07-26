@@ -12,10 +12,11 @@ import (
 )
 
 func (c *Controller) reconcile(i interface{}) error {
-	policy, err := c.lister.stands.Get(i.(string))
+	policyName := i.(string)
+	policy, err := c.lister.stands.Get(policyName)
 
 	if errors.IsNotFound(err) {
-		c.logger.Info("Deleted policy with name removed from execution", zap.String("policy_name", i.(string)))
+		c.logger.Info("Deleted policy with name removed from execution", zap.String("policy_name", policyName))
 		return nil
 	}
 
@@ -26,7 +27,7 @@ func (c *Controller) reconcile(i interface{}) error {
 	}
 
 	c.logger.Info("Update policy status", zap.String("policy_name", policy.Name))
-	policy.Status.Conditions = state.Conditions()
+	policy.Status.Conditions = state.GetConditions()
 
 	_, err = c.kube.StandSchedulesClient().
 		StandSchedulesV1().
@@ -42,11 +43,9 @@ func (c *Controller) reconcile(i interface{}) error {
 	return err
 }
 
-func (c *Controller) reschedule(
-	since time.Time,
-	policyName string,
-	scheduleState *ScheduleState,
-) {
+func (c *Controller) reschedule(policyName string, scheduleState *ScheduleState) {
+	since := c.clock.Now()
+
 	c.schedule(since, policyName, apis.StatusShutdown, scheduleState.shutdown)
 	c.schedule(since, policyName, apis.StatusStartup, scheduleState.startup)
 }

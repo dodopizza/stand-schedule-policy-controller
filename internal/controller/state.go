@@ -94,14 +94,14 @@ func (s *ScheduleState) UpdateStatus(at time.Time, err error, st apis.ConditionS
 	}
 }
 
-func (s *ScheduleState) IsScheduleEquals(other *ScheduleState) bool {
+func (s *ScheduleState) ScheduleEquals(other *ScheduleState) bool {
 	return s.startup.Equals(other.startup) && s.shutdown.Equals(other.shutdown)
 }
 
-func (s *ScheduleState) Conditions() []apis.StatusCondition {
+func (s *ScheduleState) GetConditions() []apis.StatusCondition {
 	conditions := []apis.StatusCondition{}
-	conditions = append(conditions, s.startup.Conditions(apis.StatusStartup)...)
-	conditions = append(conditions, s.shutdown.Conditions(apis.StatusShutdown)...)
+	conditions = append(conditions, s.startup.GetConditions(apis.StatusStartup)...)
+	conditions = append(conditions, s.shutdown.GetConditions(apis.StatusShutdown)...)
 	return conditions
 }
 
@@ -131,7 +131,7 @@ func (s *Schedule) SetFailed(at time.Time) {
 	s.completedAt = time.Time{}
 }
 
-func (s *Schedule) Conditions(st apis.ConditionScheduleType) []apis.StatusCondition {
+func (s *Schedule) GetConditions(st apis.ConditionScheduleType) []apis.StatusCondition {
 	conditions := []apis.StatusCondition{}
 
 	if !s.fireAt.IsZero() {

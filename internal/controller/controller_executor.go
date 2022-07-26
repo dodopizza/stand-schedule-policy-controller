@@ -72,7 +72,7 @@ func (c *Controller) execute(i interface{}) error {
 		return err
 	}
 
-	c.logger.Info("Run execution of policy",
+	c.logger.Info("Execute schedule of policy",
 		zap.String("policy_name", item.policyName),
 		zap.String("schedule_type", string(item.scheduleType)))
 
@@ -88,7 +88,7 @@ func (c *Controller) execute(i interface{}) error {
 	}
 
 	if err != nil {
-		c.logger.Error("Failed to execute policy",
+		c.logger.Error("Failed to execute schedule of policy",
 			zap.String("policy_name", item.policyName),
 			zap.String("schedule_type", string(item.scheduleType)),
 			zap.Error(err))
@@ -99,7 +99,7 @@ func (c *Controller) execute(i interface{}) error {
 }
 
 func (c *Controller) executeShutdown(policy *apis.StandSchedulePolicy) error {
-	namespaces, err := c.filterNamespaces(policy.Spec.TargetNamespaceFilter)
+	namespaces, err := c.fetchNamespaces(policy.Spec.TargetNamespaceFilter)
 	if err != nil {
 		c.logger.Warn("Failed to list target namespaces", zap.Error(err))
 		return err
@@ -148,7 +148,7 @@ func (c *Controller) executeShutdown(policy *apis.StandSchedulePolicy) error {
 }
 
 func (c *Controller) executeStartup(policy *apis.StandSchedulePolicy) error {
-	namespaces, err := c.filterNamespaces(policy.Spec.TargetNamespaceFilter)
+	namespaces, err := c.fetchNamespaces(policy.Spec.TargetNamespaceFilter)
 	if err != nil {
 		c.logger.Warn("Failed to list target namespaces", zap.Error(err))
 		return err
@@ -170,7 +170,7 @@ func (c *Controller) executeStartup(policy *apis.StandSchedulePolicy) error {
 	return summary
 }
 
-func (c *Controller) filterNamespaces(filter string) ([]string, error) {
+func (c *Controller) fetchNamespaces(filter string) ([]string, error) {
 	result := []string{}
 
 	namespaces, err := c.lister.ns.List(labels.Everything())
