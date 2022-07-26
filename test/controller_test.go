@@ -102,7 +102,7 @@ func Test_PolicyWithShutdown(t *testing.T) {
 		WithPolicies(
 			&apis.StandSchedulePolicy{
 				ObjectMeta: meta.ObjectMeta{
-					Name: "test-policy",
+					Name: "test-policy1",
 				},
 				Spec: apis.StandSchedulePolicySpec{
 					TargetNamespaceFilter: "namespace1",
@@ -119,9 +119,9 @@ func Test_PolicyWithShutdown(t *testing.T) {
 	c := f.CreateController()
 	f.AssertControllerStarted(c)
 
-	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusShutdown)
+	f.WaitUntilPolicyStatus("test-policy1", apis.ConditionScheduled, apis.StatusShutdown)
 	f.IncreaseTime(time.Minute * 2)
-	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusShutdown)
+	f.WaitUntilPolicyStatus("test-policy1", apis.ConditionCompleted, apis.StatusShutdown)
 	f.AssertNamespaceEmptyOrPodsTerminated("namespace1")
 }
 
@@ -132,7 +132,7 @@ func Test_PolicyWithStartup(t *testing.T) {
 		WithPolicies(
 			&apis.StandSchedulePolicy{
 				ObjectMeta: meta.ObjectMeta{
-					Name: "test-policy",
+					Name: "test-policy2",
 				},
 				Spec: apis.StandSchedulePolicySpec{
 					TargetNamespaceFilter: "namespace2",
@@ -150,9 +150,9 @@ func Test_PolicyWithStartup(t *testing.T) {
 	c := f.CreateController()
 	f.AssertControllerStarted(c)
 
-	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusStartup)
+	f.WaitUntilPolicyStatus("test-policy2", apis.ConditionScheduled, apis.StatusStartup)
 	f.IncreaseTime(time.Minute * 2)
-	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusStartup)
+	f.WaitUntilPolicyStatus("test-policy2", apis.ConditionCompleted, apis.StatusStartup)
 	f.AssertResourceQuotaNotExists("namespace2")
 }
 
@@ -163,7 +163,7 @@ func Test_PolicyWithShutdownOverride(t *testing.T) {
 		WithPolicies(
 			&apis.StandSchedulePolicy{
 				ObjectMeta: meta.ObjectMeta{
-					Name: "test-policy",
+					Name: "test-policy3",
 				},
 				Spec: apis.StandSchedulePolicySpec{
 					TargetNamespaceFilter: "namespace3",
@@ -183,9 +183,9 @@ func Test_PolicyWithShutdownOverride(t *testing.T) {
 	c := f.CreateController()
 	f.AssertControllerStarted(c)
 
-	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusShutdown)
+	f.WaitUntilPolicyStatus("test-policy3", apis.ConditionScheduled, apis.StatusShutdown)
 	f.IncreaseTime(time.Minute * 2)
-	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusShutdown)
+	f.WaitUntilPolicyStatus("test-policy3", apis.ConditionCompleted, apis.StatusShutdown)
 	f.AssertNamespaceEmptyOrPodsTerminated("namespace3")
 }
 
@@ -196,7 +196,7 @@ func Test_PolicyWithStartupOverride(t *testing.T) {
 		WithPolicies(
 			&apis.StandSchedulePolicy{
 				ObjectMeta: meta.ObjectMeta{
-					Name: "test-policy",
+					Name: "test-policy4",
 				},
 				Spec: apis.StandSchedulePolicySpec{
 					TargetNamespaceFilter: "namespace4",
@@ -216,9 +216,9 @@ func Test_PolicyWithStartupOverride(t *testing.T) {
 	c := f.CreateController()
 	f.AssertControllerStarted(c)
 
-	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusStartup)
+	f.WaitUntilPolicyStatus("test-policy4", apis.ConditionScheduled, apis.StatusStartup)
 	f.IncreaseTime(time.Minute * 2)
-	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusStartup)
+	f.WaitUntilPolicyStatus("test-policy4", apis.ConditionCompleted, apis.StatusStartup)
 	f.AssertResourceQuotaNotExists("namespace4")
 }
 
@@ -230,7 +230,7 @@ func Test_PolicyWithShutdownStartup(t *testing.T) {
 		WithPolicies(
 			&apis.StandSchedulePolicy{
 				ObjectMeta: meta.ObjectMeta{
-					Name: "test-policy",
+					Name: "test-policy5",
 				},
 				Spec: apis.StandSchedulePolicySpec{
 					TargetNamespaceFilter: "namespace5",
@@ -249,26 +249,26 @@ func Test_PolicyWithShutdownStartup(t *testing.T) {
 	f.AssertControllerStarted(c)
 
 	// wait to policies scheduled
-	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusShutdown)
-	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusStartup)
+	f.WaitUntilPolicyStatus("test-policy5", apis.ConditionScheduled, apis.StatusShutdown)
+	f.WaitUntilPolicyStatus("test-policy5", apis.ConditionScheduled, apis.StatusStartup)
 
 	// increase time to trigger shutdown policy & assert
 	f.IncreaseTime(time.Minute * 3)
-	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusShutdown)
+	f.WaitUntilPolicyStatus("test-policy5", apis.ConditionCompleted, apis.StatusShutdown)
 	f.AssertNamespaceEmptyOrPodsTerminated("namespace5")
 
 	// increase time to trigger startup policy & assert
 	f.IncreaseTime(time.Minute * 2)
-	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusStartup)
+	f.WaitUntilPolicyStatus("test-policy5", apis.ConditionCompleted, apis.StatusStartup)
 	f.AssertResourceQuotaNotExists("namespace5")
 
 	// increase time to > half of shutdown interval & assert shutdown scheduled
 	f.IncreaseTime(time.Minute * 1)
-	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusShutdown)
+	f.WaitUntilPolicyStatus("test-policy5", apis.ConditionScheduled, apis.StatusShutdown)
 
 	// increase time to > half of startup interval & assert startup scheduled
 	f.IncreaseTime(time.Minute * 3)
-	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusStartup)
+	f.WaitUntilPolicyStatus("test-policy5", apis.ConditionScheduled, apis.StatusStartup)
 }
 
 func Test_PolicyWithOverrides(t *testing.T) {
@@ -279,7 +279,7 @@ func Test_PolicyWithOverrides(t *testing.T) {
 		WithPolicies(
 			&apis.StandSchedulePolicy{
 				ObjectMeta: meta.ObjectMeta{
-					Name: "test-policy",
+					Name: "test-policy6",
 				},
 				Spec: apis.StandSchedulePolicySpec{
 					TargetNamespaceFilter: "namespace6",
@@ -302,21 +302,21 @@ func Test_PolicyWithOverrides(t *testing.T) {
 	f.AssertControllerStarted(c)
 
 	// wait to policies scheduled
-	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusShutdown)
-	f.WaitUntilPolicyStatus("test-policy", apis.ConditionScheduled, apis.StatusStartup)
+	f.WaitUntilPolicyStatus("test-policy6", apis.ConditionScheduled, apis.StatusShutdown)
+	f.WaitUntilPolicyStatus("test-policy6", apis.ConditionScheduled, apis.StatusStartup)
 
 	// increase time to trigger shutdown policy & assert
 	f.IncreaseTime(time.Minute * 2)
-	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusShutdown)
+	f.WaitUntilPolicyStatus("test-policy6", apis.ConditionCompleted, apis.StatusShutdown)
 	f.AssertNamespaceEmptyOrPodsTerminated("namespace6")
 
 	// increase time to trigger startup policy & assert
 	f.IncreaseTime(time.Minute * 3)
-	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusStartup)
+	f.WaitUntilPolicyStatus("test-policy6", apis.ConditionCompleted, apis.StatusStartup)
 	f.AssertResourceQuotaNotExists("namespace6")
 
 	// increase time and verify policy remains completed
 	f.IncreaseTime(time.Minute * 5)
-	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusStartup)
-	f.WaitUntilPolicyStatus("test-policy", apis.ConditionCompleted, apis.StatusShutdown)
+	f.WaitUntilPolicyStatus("test-policy6", apis.ConditionCompleted, apis.StatusStartup)
+	f.WaitUntilPolicyStatus("test-policy6", apis.ConditionCompleted, apis.StatusShutdown)
 }

@@ -33,7 +33,6 @@ type (
 		kube      kubernetes.Interface
 		azure     *azure
 		clock     *clock.FakeClock
-		logger    *zap.Logger
 		interrupt chan struct{}
 		t         *testing.T
 		cleanup   *fixtureCleanup
@@ -61,11 +60,6 @@ func NewFixture(t *testing.T) *fixture {
 		t.Fatal(err)
 	}
 
-	l, err := zap.NewDevelopment()
-	if err != nil {
-		t.Fatal(err)
-	}
-
 	cleanup := NewFixtureCleanup(t, k)
 
 	return &fixture{
@@ -77,7 +71,6 @@ func NewFixture(t *testing.T) *fixture {
 		kube:      k,
 		azure:     &azure{},
 		clock:     clock.NewFakeClock(_Time),
-		logger:    l,
 		interrupt: cleanup.interrupt,
 		t:         t,
 		cleanup:   cleanup,
@@ -180,15 +173,19 @@ func (f *fixture) WithoutCleanup() *fixture {
 }
 
 func (f *fixture) CreateController() *controller.Controller {
-	f.cleanup.controller = controller.NewController(f.cfg, f.logger, f.clock, f.kube, f.azure)
+	l, err := zap.NewDevelopment()
+	if err != nil {
+		f.t.Fatal(err)
+	}
+
+	f.cleanup.controller = controller.NewController(f.cfg, l, f.clock, f.kube, f.azure)
+
 	return f.cleanup.controller
 }
 
 func (f *fixture) IncreaseTime(d time.Duration) {
 	nextTime := _Time.Add(d)
-	f.logger.Info("Increase controller time",
-		zap.Stringer("from", _Time),
-		zap.Stringer("to", nextTime))
+	f.t.Logf("Increase controller time from %s to %s", _Time, nextTime)
 	f.clock.SetTime(nextTime)
 	_Time = nextTime
 }
@@ -207,11 +204,7 @@ func (f *fixture) WaitUntilPolicyStatus(name string, ct apis.ConditionType, sht 
 			return
 
 		case <-ticker.C:
-			f.logger.Debug("Waiting policy status",
-				zap.String("policy_name", name),
-				zap.String("schedule_status", string(ct)),
-				zap.String("schedule_type", string(sht)))
-
+			f.t.Logf("Waiting policy (%s) status for %s to %s", name, sht, ct)
 			policy, err := f.kube.StandSchedulesClient().
 				StandSchedulesV1().
 				StandSchedulePolicies().
@@ -239,12 +232,15 @@ func (f *fixtureCleanup) AddNamespace(namespace *core.Namespace) {
 }
 
 func (f *fixtureCleanup) Handler() {
-	f.interrupt <- struct{}{}
+	f.t.Log("Invoke cleanup handler")
+	close(f.interrupt)
+	time.Sleep(time.Second * 1)
 
 	if !f.cleanup {
 		return
 	}
 
+	f.t.Log("Cleanup cluster objects")
 	for policy := range f.policies {
 		err := f.kube.StandSchedulesClient().
 			StandSchedulesV1().
