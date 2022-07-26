@@ -49,12 +49,12 @@ func (c *Controller) reconcile(i interface{}) error {
 func (c *Controller) scheduleIfRequired(policy *apis.StandSchedulePolicy, ps *state.PolicyState) {
 	ts := c.clock.Now()
 
-	if ps.Shutdown.ScheduleRequired(ts) {
-		c.schedule(ts, policy.Name, apis.StatusShutdown, ps.Shutdown)
+	if ps.ScheduleRequired(apis.StatusShutdown, ts) {
+		c.schedule(ts, policy.Name, apis.StatusShutdown, ps.GetSchedule(apis.StatusShutdown))
 	}
 
-	if ps.Startup.ScheduleRequired(ts) {
-		c.schedule(ts, policy.Name, apis.StatusStartup, ps.Startup)
+	if ps.ScheduleRequired(apis.StatusStartup, ts) {
+		c.schedule(ts, policy.Name, apis.StatusStartup, ps.GetSchedule(apis.StatusStartup))
 	}
 }
 

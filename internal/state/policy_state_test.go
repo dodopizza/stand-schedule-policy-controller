@@ -66,11 +66,11 @@ func Test_UpdateStatus(t *testing.T) {
 	ps.GetSchedule(apis.StatusStartup).SetFiredAfter(ts)
 	ps.GetSchedule(apis.StatusShutdown).SetFiredAfter(ts)
 
-	ps.UpdateStatus(ts.Add(time.Minute*1).Add(time.Second*20), nil, apis.StatusStartup)
+	ps.UpdateStatus(apis.StatusStartup, ts.Add(time.Minute*1).Add(time.Second*20), nil)
 	assert.Equal(t, ts.Add(time.Minute*1).Add(time.Second*20), ps.GetSchedule(apis.StatusStartup).completedAt)
 	assert.Equal(t, time.Time{}, ps.GetSchedule(apis.StatusStartup).failedAt)
 
-	ps.UpdateStatus(ts.Add(time.Minute*1).Add(time.Second*20), errors.New("some"), apis.StatusShutdown)
+	ps.UpdateStatus(apis.StatusShutdown, ts.Add(time.Minute*1).Add(time.Second*20), errors.New("some"))
 	assert.Equal(t, time.Time{}, ps.GetSchedule(apis.StatusShutdown).completedAt)
 	assert.Equal(t, ts.Add(time.Minute*1).Add(time.Second*20), ps.GetSchedule(apis.StatusShutdown).failedAt)
 }

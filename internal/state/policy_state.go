@@ -8,8 +8,8 @@ import (
 
 type (
 	PolicyState struct {
-		Startup  *ScheduleState
-		Shutdown *ScheduleState
+		startup  *ScheduleState
+		shutdown *ScheduleState
 	}
 )
 
@@ -31,22 +31,29 @@ func NewPolicyState(policy *apis.StandSchedulePolicy) (*PolicyState, error) {
 	}
 
 	return &PolicyState{
-		Startup:  startup,
-		Shutdown: shutdown,
+		startup:  startup,
+		shutdown: shutdown,
 	}, nil
 }
 
 func (ps *PolicyState) GetSchedule(st apis.ConditionScheduleType) *ScheduleState {
 	switch st {
 	case apis.StatusStartup:
-		return ps.Startup
+		return ps.startup
 	case apis.StatusShutdown:
-		return ps.Shutdown
+		return ps.shutdown
 	}
 	return nil
 }
 
-func (ps *PolicyState) UpdateStatus(at time.Time, err error, st apis.ConditionScheduleType) {
+func (ps *PolicyState) GetConditions() []apis.StatusCondition {
+	conditions := []apis.StatusCondition{}
+	conditions = append(conditions, ps.startup.GetConditions(apis.StatusStartup)...)
+	conditions = append(conditions, ps.shutdown.GetConditions(apis.StatusShutdown)...)
+	return conditions
+}
+
+func (ps *PolicyState) UpdateStatus(st apis.ConditionScheduleType, at time.Time, err error) {
 	schedule := ps.GetSchedule(st)
 
 	if err != nil {
@@ -57,12 +64,15 @@ func (ps *PolicyState) UpdateStatus(at time.Time, err error, st apis.ConditionSc
 }
 
 func (ps *PolicyState) ScheduleEquals(other *PolicyState) bool {
-	return ps.Startup.Equals(other.Startup) && ps.Shutdown.Equals(other.Shutdown)
+	return ps.startup.Equals(other.startup) && ps.shutdown.Equals(other.shutdown)
 }
 
-func (ps *PolicyState) GetConditions() []apis.StatusCondition {
-	conditions := []apis.StatusCondition{}
-	conditions = append(conditions, ps.Startup.GetConditions(apis.StatusStartup)...)
-	conditions = append(conditions, ps.Shutdown.GetConditions(apis.StatusShutdown)...)
-	return conditions
+func (ps *PolicyState) ScheduleRequired(st apis.ConditionScheduleType, at time.Time) bool {
+	switch st {
+	case apis.StatusStartup:
+		return ps.startup.ScheduleRequired(at)
+	case apis.StatusShutdown:
+		return ps.shutdown.ScheduleRequired(at)
+	}
+	return false
 }

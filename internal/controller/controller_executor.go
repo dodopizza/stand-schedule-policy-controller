@@ -78,10 +78,10 @@ func (c *Controller) execute(i interface{}) error {
 	switch item.scheduleType {
 	case apis.StatusShutdown:
 		err = c.executeShutdown(policy)
-		state.UpdateStatus(now, err, item.scheduleType)
+		state.UpdateStatus(item.scheduleType, now, err)
 	case apis.StatusStartup:
 		err = c.executeStartup(policy)
-		state.UpdateStatus(now, err, item.scheduleType)
+		state.UpdateStatus(item.scheduleType, now, err)
 	default:
 		err = fmt.Errorf("not supported schedule type specified: %s", item.scheduleType)
 	}
