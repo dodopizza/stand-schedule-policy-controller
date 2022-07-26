@@ -12,11 +12,11 @@ import (
 
 type (
 	ScheduleState struct {
-		Schedule    cron.Schedule
-		Override    time.Time
-		FireAt      time.Time
-		CompletedAt time.Time
-		FailedAt    time.Time
+		schedule    cron.Schedule
+		override    time.Time
+		fireAt      time.Time
+		completedAt time.Time
+		failedAt    time.Time
 	}
 )
 
@@ -29,68 +29,72 @@ func NewSchedule(schedule, override string) (*ScheduleState, error) {
 	ov, _ := time.Parse(time.RFC3339, override)
 
 	return &ScheduleState{
-		Schedule: sc,
-		Override: ov,
+		schedule: sc,
+		override: ov,
 	}, nil
 }
 
 func (ss *ScheduleState) GetExecutedTime() time.Time {
-	if !ss.CompletedAt.IsZero() {
-		return ss.CompletedAt
+	if !ss.completedAt.IsZero() {
+		return ss.completedAt
 	}
-	return ss.FailedAt
+	return ss.failedAt
+}
+
+func (ss *ScheduleState) GetFireTime() time.Time {
+	return ss.fireAt
 }
 
 func (ss *ScheduleState) GetNextExecutionTime(since time.Time) time.Time {
 	// todo: store when override expires ?
 
-	if ss.Override.After(since) {
-		return ss.Override
+	if ss.override.After(since) {
+		return ss.override
 	}
 
-	return ss.Schedule.Next(since)
+	return ss.schedule.Next(since)
 }
 
-func (ss *ScheduleState) SetFiredSince(since time.Time) {
-	ss.FireAt = ss.GetNextExecutionTime(since)
-	ss.FailedAt = time.Time{}
-	ss.CompletedAt = time.Time{}
+func (ss *ScheduleState) SetFiredAfter(ts time.Time) {
+	ss.fireAt = ss.GetNextExecutionTime(ts)
+	ss.failedAt = time.Time{}
+	ss.completedAt = time.Time{}
 }
 
 func (ss *ScheduleState) SetCompleted(at time.Time) {
-	ss.CompletedAt = at
-	ss.FailedAt = time.Time{}
+	ss.completedAt = at
+	ss.failedAt = time.Time{}
 }
 
 func (ss *ScheduleState) SetFailed(at time.Time) {
-	ss.FailedAt = at
-	ss.CompletedAt = time.Time{}
+	ss.failedAt = at
+	ss.completedAt = time.Time{}
 }
 
 func (ss *ScheduleState) GetConditions(st apis.ConditionScheduleType) []apis.StatusCondition {
 	conditions := []apis.StatusCondition{}
 
-	if !ss.FireAt.IsZero() {
+	if !ss.fireAt.IsZero() {
 		conditions = append(conditions, apis.StatusCondition{
 			Type:               apis.ConditionScheduled,
 			Status:             st,
-			LastTransitionTime: meta.NewTime(ss.FireAt),
+			LastTransitionTime: meta.NewTime(ss.fireAt),
 		})
 	}
 
-	if !ss.CompletedAt.IsZero() {
+	if !ss.completedAt.IsZero() {
 		conditions = append(conditions, apis.StatusCondition{
 			Type:               apis.ConditionCompleted,
 			Status:             st,
-			LastTransitionTime: meta.NewTime(ss.CompletedAt),
+			LastTransitionTime: meta.NewTime(ss.completedAt),
 		})
 	}
 
-	if !ss.FailedAt.IsZero() {
+	if !ss.failedAt.IsZero() {
 		conditions = append(conditions, apis.StatusCondition{
 			Type:               apis.ConditionFailed,
 			Status:             st,
-			LastTransitionTime: meta.NewTime(ss.FailedAt),
+			LastTransitionTime: meta.NewTime(ss.failedAt),
 		})
 	}
 
@@ -99,7 +103,7 @@ func (ss *ScheduleState) GetConditions(st apis.ConditionScheduleType) []apis.Sta
 
 func (ss *ScheduleState) ScheduleRequired(current time.Time) bool {
 	// not scheduled at all
-	if ss.FireAt.IsZero() {
+	if ss.fireAt.IsZero() {
 		return true
 	}
 
@@ -118,5 +122,5 @@ func (ss *ScheduleState) ScheduleRequired(current time.Time) bool {
 }
 
 func (ss *ScheduleState) Equals(other *ScheduleState) bool {
-	return reflect.DeepEqual(ss.Schedule, other.Schedule) && ss.Override == other.Override
+	return reflect.DeepEqual(ss.schedule, other.schedule) && ss.override == other.override
 }

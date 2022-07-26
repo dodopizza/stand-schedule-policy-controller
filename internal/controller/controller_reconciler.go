@@ -64,9 +64,9 @@ func (c *Controller) schedule(
 	scheduleType apis.ConditionScheduleType,
 	schedule *state.ScheduleState,
 ) {
-	schedule.SetFiredSince(ts)
+	schedule.SetFiredAfter(ts)
 
-	if schedule.FireAt.IsZero() {
+	if schedule.GetFireTime().IsZero() {
 		c.logger.Error("Failed to schedule policy",
 			zap.String("policy_name", policyName),
 			zap.String("schedule_type", string(scheduleType)),
@@ -78,13 +78,13 @@ func (c *Controller) schedule(
 		zap.String("policy_name", policyName),
 		zap.String("schedule_type", string(scheduleType)),
 		zap.Stringer("since", ts),
-		zap.Stringer("at", schedule.FireAt))
+		zap.Stringer("at", schedule.GetFireTime()))
 
 	item := WorkItem{
 		policyName:   policyName,
 		scheduleType: scheduleType,
-		fireAt:       schedule.FireAt,
+		fireAt:       schedule.GetFireTime(),
 	}
 
-	c.executor.EnqueueAfter(item, schedule.FireAt.Sub(ts))
+	c.executor.EnqueueAfter(item, schedule.GetFireTime().Sub(ts))
 }
