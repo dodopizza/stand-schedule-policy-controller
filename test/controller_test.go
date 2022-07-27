@@ -110,9 +110,7 @@ func Test_PolicyWithShutdown(t *testing.T) {
 						Startup:  apis.CronSchedule{Cron: "@yearly"},
 						Shutdown: apis.CronSchedule{Cron: "* * * * *"},
 					},
-					Resources: apis.ResourcesSpec{
-						Azure: []apis.AzureResource{},
-					},
+					Resources: apis.ResourcesSpec{},
 				},
 			},
 		)
@@ -140,9 +138,7 @@ func Test_PolicyWithStartup(t *testing.T) {
 						Startup:  apis.CronSchedule{Cron: "* * * * *"},
 						Shutdown: apis.CronSchedule{Cron: "@yearly"},
 					},
-					Resources: apis.ResourcesSpec{
-						Azure: []apis.AzureResource{},
-					},
+					Resources: apis.ResourcesSpec{},
 				},
 			},
 		)
@@ -174,9 +170,7 @@ func Test_PolicyWithShutdownOverride(t *testing.T) {
 							Override: _Time.Add(time.Second * 1).Format(time.RFC3339),
 						},
 					},
-					Resources: apis.ResourcesSpec{
-						Azure: []apis.AzureResource{},
-					},
+					Resources: apis.ResourcesSpec{},
 				},
 			},
 		)
@@ -207,9 +201,7 @@ func Test_PolicyWithStartupOverride(t *testing.T) {
 						},
 						Shutdown: apis.CronSchedule{Cron: "@yearly"},
 					},
-					Resources: apis.ResourcesSpec{
-						Azure: []apis.AzureResource{},
-					},
+					Resources: apis.ResourcesSpec{},
 				},
 			},
 		)
@@ -238,9 +230,7 @@ func Test_PolicyWithShutdownStartup(t *testing.T) {
 						Startup:  apis.CronSchedule{Cron: "0/5 * * * *"},
 						Shutdown: apis.CronSchedule{Cron: "0/3 * * * *"},
 					},
-					Resources: apis.ResourcesSpec{
-						Azure: []apis.AzureResource{},
-					},
+					Resources: apis.ResourcesSpec{},
 				},
 			},
 		)
@@ -291,9 +281,7 @@ func Test_PolicyWithOverrides(t *testing.T) {
 							Override: _Time.Add(time.Minute * 2).Format(time.RFC3339),
 						},
 					},
-					Resources: apis.ResourcesSpec{
-						Azure: []apis.AzureResource{},
-					},
+					Resources: apis.ResourcesSpec{},
 				},
 			},
 		)

@@ -69,8 +69,6 @@ spec:
                       - type
                       type: object
                     type: array
-                required:
-                - azure
                 type: object
               schedule:
                 description: Schedules contains schedules spec.

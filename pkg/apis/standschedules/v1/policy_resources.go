@@ -15,7 +15,7 @@ const (
 
 type ResourcesSpec struct {
 	// Azure contains an array of related azure resources.
-	Azure []AzureResource `json:"azure"`
+	Azure []AzureResource `json:"azure,omitempty"`
 }
 
 type AzureResource struct {
