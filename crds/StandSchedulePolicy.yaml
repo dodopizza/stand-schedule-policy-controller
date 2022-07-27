@@ -70,7 +70,7 @@ spec:
                       type: object
                     type: array
                 type: object
-              schedule:
+              schedules:
                 description: Schedules contains schedules spec.
                 properties:
                   shutdown:
@@ -85,7 +85,6 @@ spec:
                         type: string
                     required:
                     - cron
-                    - override
                     type: object
                   startup:
                     description: Startup defines schedule for startup.
@@ -99,7 +98,6 @@ spec:
                         type: string
                     required:
                     - cron
-                    - override
                     type: object
                 required:
                 - shutdown
@@ -110,8 +108,7 @@ spec:
                   to process.
                 type: string
             required:
-            - resources
-            - schedule
+            - schedules
             - targetNamespaceFilter
             type: object
           status:

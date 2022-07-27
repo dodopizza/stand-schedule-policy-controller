@@ -50,10 +50,11 @@ type StandSchedulePolicySpec struct {
 	TargetNamespaceFilter string `json:"targetNamespaceFilter"`
 
 	// Schedules contains schedules spec.
-	Schedules SchedulesSpec `json:"schedule"`
+	Schedules SchedulesSpec `json:"schedules"`
 
 	// Resources contains external resources spec.
-	Resources ResourcesSpec `json:"resources"`
+	// +optional
+	Resources ResourcesSpec `json:"resources,omitempty"`
 }
 
 // SchedulesSpec defines supported schedules for policy.
@@ -71,5 +72,6 @@ type CronSchedule struct {
 	Cron string `json:"cron"`
 
 	// Override is an override as time string (formatted as FRC3339)
-	Override string `json:"override"`
+	// +optional
+	Override string `json:"override,omitempty"`
 }
