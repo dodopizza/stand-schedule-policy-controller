@@ -4,6 +4,7 @@ import (
 	"log"
 
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	"github.com/dodopizza/stand-schedule-policy-controller/config"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/app"
@@ -14,9 +15,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("Config error: %s", err)
 	}
-	logger, err := zap.NewProduction()
+	app.Run(logger(), cfg)
+}
+
+func logger() *zap.Logger {
+	cfg := zap.NewProductionConfig()
+	cfg.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
+	logger, err := cfg.Build()
 	if err != nil {
-		log.Fatalf("Logger error: %s", err)
+		log.Fatalf("Logger error: %v", err)
 	}
-	app.Run(logger, cfg)
+	return logger
 }

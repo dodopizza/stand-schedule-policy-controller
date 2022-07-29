@@ -22,6 +22,7 @@ import (
 // todo: check workitem.fireat and schedule.fireat
 // todo: plugin
 // todo: validation webhook
+// todo: save state smth / leader election
 
 type (
 	WorkItem struct {
