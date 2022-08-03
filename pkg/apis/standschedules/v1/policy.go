@@ -20,6 +20,7 @@ const (
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=standschedulepolicies,scope="Cluster",shortName=sspol
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 // +kubebuilder:printcolumn:name="StartupScheduledTime",type="date",JSONPath=".status.startup.scheduledTime"
 // +kubebuilder:printcolumn:name="StartupStatus",type="string",JSONPath=".status.startup.status"
 // +kubebuilder:printcolumn:name="StartupStatusTime",type="date",JSONPath=".status.startup.statusTime"

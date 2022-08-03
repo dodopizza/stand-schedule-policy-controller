@@ -78,7 +78,7 @@ func (in *StandSchedulePolicyStatus) GetScheduleStatus(st ConditionScheduleType)
 func (in *StandSchedulePolicyStatus) UpdateConditions(conditions []StatusCondition) {
 	in.Conditions = conditions
 	in.Startup.UpdateFromConditions(StatusStartup, conditions)
-	in.Startup.UpdateFromConditions(StatusShutdown, conditions)
+	in.Shutdown.UpdateFromConditions(StatusShutdown, conditions)
 }
 
 func (in *ScheduleStatus) UpdateFromConditions(st ConditionScheduleType, conditions []StatusCondition) {

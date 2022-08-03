@@ -18,6 +18,9 @@ spec:
   scope: Cluster
   versions:
   - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
     - jsonPath: .status.startup.scheduledTime
       name: StartupScheduledTime
       type: date
