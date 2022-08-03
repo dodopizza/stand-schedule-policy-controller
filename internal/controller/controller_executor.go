@@ -35,6 +35,10 @@ const (
 	_ResourceQuotaName = "zero-quota"
 )
 
+func (w *WorkItem) String() string {
+	return fmt.Sprintf("%s/%s at %s", w.policyName, w.scheduleType, w.fireAt)
+}
+
 func (w *WorkItem) deadline() time.Time {
 	timeout := time.Minute * 30
 	return w.fireAt.Add(timeout)
