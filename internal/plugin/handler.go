@@ -8,6 +8,7 @@ import (
 
 	"github.com/spf13/pflag"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/kubernetes"
@@ -16,8 +17,10 @@ import (
 
 type (
 	Handler struct {
-		Type apis.ConditionScheduleType
-		Wait bool
+		Type        apis.ConditionScheduleType
+		Stand       string
+		Wait        bool
+		WaitTimeout time.Duration
 
 		kube         kubernetes.Interface
 		kubeFlags    *genericclioptions.ConfigFlags
@@ -27,7 +30,8 @@ type (
 
 func NewStartupHandler() *Handler {
 	return &Handler{
-		Type: apis.StatusStartup,
+		Type:        apis.StatusStartup,
+		WaitTimeout: time.Minute * 5,
 	}
 }
 
@@ -50,28 +54,25 @@ func (h *Handler) SetupFlags() *pflag.FlagSet {
 	return h.handlerFlags
 }
 
-func (h *Handler) Setup() error {
+func (h *Handler) Setup(stand string) error {
 	k, err := kubernetes.NewPluginClient(h.kubeFlags)
 	if err != nil {
 		return err
 	}
 	h.kube = k
+	h.Stand = stand
 	return nil
 }
 
-func (h *Handler) Run(stand string) error {
-	policy, err := h.kube.StandSchedulesClient().
-		StandSchedulesV1().
-		StandSchedulePolicies().
-		Get(context.Background(), stand, meta.GetOptions{})
+func (h *Handler) Run() error {
+	policy, err := h.fetchPolicy()
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Found sspol %s\n", policy.Name)
 
 	current := time.Now().UTC()
 	override := current.Add(time.Second * 30).Round(time.Minute)
-	fmt.Printf("Generated override time for policy %s is %s\n", policy.Name, override)
+	fmt.Printf("Policy %s execution time will be at: %s\n", policy.Name, override)
 
 	switch h.Type {
 	case apis.StatusStartup:
@@ -82,7 +83,6 @@ func (h *Handler) Run(stand string) error {
 		return fmt.Errorf("invalid type %s specified\n", h.Type)
 	}
 
-	fmt.Printf("Update sspol %s definition\n", policy.Name)
 	_, err = h.kube.StandSchedulesClient().
 		StandSchedulesV1().
 		StandSchedulePolicies().
@@ -90,10 +90,37 @@ func (h *Handler) Run(stand string) error {
 	if err != nil {
 		fmt.Printf("Failed to update sspol %s definiton\n", policy.Name)
 	}
+	fmt.Printf("Policy %s definition updated\n", policy.Name)
 
 	if h.Wait {
-		// todo: wait support
+		fmt.Printf("Waiting to completion: ")
+		return wait.PollImmediate(time.Second*15, h.WaitTimeout, h.WaitPolicyReady)
 	}
 
 	return nil
+}
+
+func (h *Handler) WaitPolicyReady() (bool, error) {
+	fmt.Printf(".")
+
+	policy, err := h.fetchPolicy()
+	if err != nil {
+		return false, err
+	}
+
+	switch h.Type {
+	case apis.StatusStartup:
+		return policy.Status.Startup.Status == string(apis.ConditionCompleted), nil
+	case apis.StatusShutdown:
+		return policy.Status.Shutdown.Status == string(apis.ConditionCompleted), nil
+	}
+
+	return false, nil
+}
+
+func (h *Handler) fetchPolicy() (*apis.StandSchedulePolicy, error) {
+	return h.kube.StandSchedulesClient().
+		StandSchedulesV1().
+		StandSchedulePolicies().
+		Get(context.Background(), h.Stand, meta.GetOptions{})
 }

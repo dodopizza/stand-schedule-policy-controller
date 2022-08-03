@@ -28,10 +28,10 @@ func NewStartupCommand() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Short: "Startup stand",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := h.Setup(); err != nil {
+			if err := h.Setup(args[0]); err != nil {
 				return err
 			}
-			return h.Run(args[0])
+			return h.Run()
 		},
 	}
 	cmd.Flags().AddFlagSet(h.SetupFlags())
@@ -47,10 +47,10 @@ func NewShutdownCommand() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Short: "Shutdown stand",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := h.Setup(); err != nil {
+			if err := h.Setup(args[0]); err != nil {
 				return err
 			}
-			return h.Run(args[0])
+			return h.Run()
 		},
 	}
 	cmd.Flags().AddFlagSet(h.SetupFlags())
