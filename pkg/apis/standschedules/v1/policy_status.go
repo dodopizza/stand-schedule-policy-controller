@@ -32,11 +32,11 @@ const (
 // StandSchedulePolicyStatus is a status for StandSchedulePolicy resource.
 type StandSchedulePolicyStatus struct {
 	// Conditions defines current service state of policy.
-	Conditions []StatusCondition `json:"conditions"`
+	Conditions []StatusCondition `json:"conditions,omitempty"`
 	// Startup defines status of startup schedule
-	Startup ScheduleStatus `json:"startup"`
+	Startup ScheduleStatus `json:"startup,omitempty"`
 	// Shutdown defines status of shutdown schedule
-	Shutdown ScheduleStatus `json:"shutdown"`
+	Shutdown ScheduleStatus `json:"shutdown,omitempty"`
 }
 
 type StatusCondition struct {
@@ -58,11 +58,11 @@ type StatusCondition struct {
 
 type ScheduleStatus struct {
 	// ScheduledTime defines time when cron scheduled
-	ScheduledTime metav1.Time `json:"scheduledTime"`
+	ScheduledTime metav1.Time `json:"scheduledTime,omitempty"`
 	// Status defines how schedule finished
-	Status string `json:"status"`
+	Status string `json:"status,omitempty"`
 	// Status defines when schedule finished
-	StatusTime metav1.Time `json:"statusTime"`
+	StatusTime metav1.Time `json:"statusTime,omitempty"`
 }
 
 func (in *StandSchedulePolicyStatus) GetScheduleStatus(st ConditionScheduleType) *ScheduleStatus {

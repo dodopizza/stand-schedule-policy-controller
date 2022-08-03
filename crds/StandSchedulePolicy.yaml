@@ -35,7 +35,7 @@ spec:
       type: string
     - jsonPath: .status.shutdown.statusTime
       name: ShutdownStatusTime
-      type: dateTime
+      type: date
     name: v1
     schema:
       openAPIV3Schema:
@@ -176,10 +176,6 @@ spec:
                     description: Status defines when schedule finished
                     format: date-time
                     type: string
-                required:
-                - scheduledTime
-                - status
-                - statusTime
                 type: object
               startup:
                 description: Startup defines status of startup schedule
@@ -195,15 +191,7 @@ spec:
                     description: Status defines when schedule finished
                     format: date-time
                     type: string
-                required:
-                - scheduledTime
-                - status
-                - statusTime
                 type: object
-            required:
-            - conditions
-            - shutdown
-            - startup
             type: object
         required:
         - spec

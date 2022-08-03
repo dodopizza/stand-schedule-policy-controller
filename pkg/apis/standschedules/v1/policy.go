@@ -25,7 +25,7 @@ const (
 // +kubebuilder:printcolumn:name="StartupStatusTime",type="date",JSONPath=".status.startup.statusTime"
 // +kubebuilder:printcolumn:name="ShutdownScheduledTime",type="date",JSONPath=".status.shutdown.scheduledTime"
 // +kubebuilder:printcolumn:name="ShutdownStatus",type="string",JSONPath=".status.shutdown.status"
-// +kubebuilder:printcolumn:name="ShutdownStatusTime",type="dateTime",JSONPath=".status.shutdown.statusTime"
+// +kubebuilder:printcolumn:name="ShutdownStatusTime",type="date",JSONPath=".status.shutdown.statusTime"
 
 // StandSchedulePolicy declares policy for stand startup/shutdown schedules
 type StandSchedulePolicy struct {
