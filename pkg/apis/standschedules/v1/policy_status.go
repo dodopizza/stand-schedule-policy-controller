@@ -65,6 +65,16 @@ type ScheduleStatus struct {
 	StatusTime metav1.Time `json:"statusTime"`
 }
 
+func (in *StandSchedulePolicyStatus) GetScheduleStatus(st ConditionScheduleType) *ScheduleStatus {
+	switch st {
+	case StatusStartup:
+		return &in.Startup
+	case StatusShutdown:
+		return &in.Shutdown
+	}
+	return nil
+}
+
 func (in *StandSchedulePolicyStatus) UpdateConditions(conditions []StatusCondition) {
 	in.Conditions = conditions
 	in.Startup.UpdateFromConditions(StatusStartup, conditions)

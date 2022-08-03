@@ -81,3 +81,13 @@ type CronSchedule struct {
 	// +optional
 	Override string `json:"override,omitempty"`
 }
+
+func (in *StandSchedulePolicySpec) GetSchedule(st ConditionScheduleType) *CronSchedule {
+	switch st {
+	case StatusStartup:
+		return &in.Schedules.Startup
+	case StatusShutdown:
+		return &in.Schedules.Shutdown
+	}
+	return nil
+}

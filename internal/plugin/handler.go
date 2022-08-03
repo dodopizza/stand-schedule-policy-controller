@@ -74,14 +74,8 @@ func (h *Handler) Run() error {
 	override := current.Add(time.Second * 30).Round(time.Minute)
 	fmt.Printf("Policy %s execution time will be at: %s\n", policy.Name, override)
 
-	switch h.Type {
-	case apis.StatusStartup:
-		policy.Spec.Schedules.Startup.Override = override.Format(time.RFC3339)
-	case apis.StatusShutdown:
-		policy.Spec.Schedules.Shutdown.Override = override.Format(time.RFC3339)
-	default:
-		return fmt.Errorf("invalid type %s specified\n", h.Type)
-	}
+	schedule := policy.Spec.GetSchedule(h.Type)
+	schedule.Override = override.Format(time.RFC3339)
 
 	_, err = h.kube.StandSchedulesClient().
 		StandSchedulesV1().
@@ -108,14 +102,9 @@ func (h *Handler) WaitPolicyReady() (bool, error) {
 		return false, err
 	}
 
-	switch h.Type {
-	case apis.StatusStartup:
-		return policy.Status.Startup.Status == string(apis.ConditionCompleted), nil
-	case apis.StatusShutdown:
-		return policy.Status.Shutdown.Status == string(apis.ConditionCompleted), nil
-	}
-
-	return false, nil
+	status := policy.Status.GetScheduleStatus(h.Type)
+	statusCompleted := status.Status == string(apis.ConditionCompleted) || status.Status == string(apis.ConditionFailed)
+	return statusCompleted, nil
 }
 
 func (h *Handler) fetchPolicy() (*apis.StandSchedulePolicy, error) {
