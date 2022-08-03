@@ -39,12 +39,19 @@ tidy: ## Run tidy for go module to remove unused dependencies
 	go mod tidy -v
 
 .PHONY: build
-build: ## Build app locally
-	@GOOS=$(BUILD_OS) GOARCH=$(BUILD_ARCH) CGO_ENABLED=0 go build -v -o ./bin/${PROJECT_NAME} ./cmd
+build: build-controller build-plugin ## Build controller and plugin locally
+
+.PHONY: build-controller
+build-controller: ## Build controller locally
+	@GOOS=$(BUILD_OS) GOARCH=$(BUILD_ARCH) CGO_ENABLED=0 go build -v -o ./bin/${PROJECT_NAME} ./cmd/controller
+
+.PHONY: build-plugin
+build-plugin: ## Build plugin locally
+	@GOOS=$(BUILD_OS) GOARCH=$(BUILD_ARCH) CGO_ENABLED=0 go build -v -o ./bin/${PROJECT_NAME} ./cmd/plugin
 
 .PHONY: build-docker
 build-docker: BUILD_OS = linux
-build-docker: build ## Build app locally and create docker image
+build-docker: build-controller ## Build controller locally and create docker image
 	docker build \
 	--progress plain \
 	--platform linux/${BUILD_ARCH} \
@@ -54,7 +61,7 @@ build-docker: build ## Build app locally and create docker image
 
 .PHONY: push-docker
 push-docker: BUILD_OS = linux
-push-docker: build-docker ## Build app locally and push docker image
+push-docker: build-docker ## Build controller locally and push docker image
 	docker push "${DOCKER_IMAGE_REPO}:${DOCKER_IMAGE_COMMIT_SHA}"
 
 .PHONY: test
@@ -91,12 +98,12 @@ test-integration: ## Run all integration tests
 	-parallel 1 \
 	./test/...
 
-.PHONY: run
-run: build ## Run app locally
+.PHONY: run-controller
+run-controller: build-controller ## Run controller locally
 	@./bin/${PROJECT_NAME}
 
 .PHONY: run-docker
-run-docker: build-docker ## Run app in docker
+run-docker: build-docker ## Run controller in docker
 	@docker run \
 	-it \
 	--rm "${DOCKER_IMAGE_REPO}:${DOCKER_IMAGE_COMMIT_SHA}"

@@ -6,7 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/cli-runtime/pkg/genericclioptions"
 	corecs "k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/client-go/util/homedir"
@@ -76,6 +79,24 @@ func NewForTest(env string) (Interface, error) {
 		return nil, err
 	}
 	return newForConfig(cfg)
+}
+
+func NewPluginClient(clientGetter genericclioptions.RESTClientGetter) (Interface, error) {
+	restConfig, err := clientGetter.ToRESTConfig()
+	if err != nil {
+		return nil, err
+	}
+	restConfig.GroupVersion = &schema.GroupVersion{Group: "", Version: "v1"}
+	if restConfig.APIPath == "" {
+		restConfig.APIPath = "/api"
+	}
+	if restConfig.NegotiatedSerializer == nil {
+		restConfig.NegotiatedSerializer = scheme.Codecs.WithoutConversion()
+	}
+	if len(restConfig.UserAgent) == 0 {
+		restConfig.UserAgent = rest.DefaultKubernetesUserAgent()
+	}
+	return newForConfig(restConfig)
 }
 
 func newForConfig(cfg *rest.Config) (*client, error) {
