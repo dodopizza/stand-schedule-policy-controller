@@ -33,6 +33,10 @@ const (
 type StandSchedulePolicyStatus struct {
 	// Conditions defines current service state of policy.
 	Conditions []StatusCondition `json:"conditions"`
+	// Startup defines status of startup schedule
+	Startup ScheduleStatus `json:"startup"`
+	// Shutdown defines status of shutdown schedule
+	Shutdown ScheduleStatus `json:"shutdown"`
 }
 
 type StatusCondition struct {
@@ -50,4 +54,36 @@ type StatusCondition struct {
 	// Human-readable message indicating details about last transition.
 	// +optional
 	Message string `json:"message,omitempty"`
+}
+
+type ScheduleStatus struct {
+	// ScheduledTime defines time when cron scheduled
+	ScheduledTime metav1.Time `json:"scheduledTime"`
+	// Status defines how schedule finished
+	Status string `json:"status"`
+	// Status defines when schedule finished
+	StatusTime metav1.Time `json:"statusTime"`
+}
+
+func (in *StandSchedulePolicyStatus) UpdateConditions(conditions []StatusCondition) {
+	in.Conditions = conditions
+	in.Startup.UpdateFromConditions(StatusStartup, conditions)
+	in.Startup.UpdateFromConditions(StatusShutdown, conditions)
+}
+
+func (in *ScheduleStatus) UpdateFromConditions(st ConditionScheduleType, conditions []StatusCondition) {
+	for _, condition := range conditions {
+		if condition.Status != st {
+			continue
+		}
+
+		if condition.Type == ConditionScheduled {
+			in.ScheduledTime = condition.LastTransitionTime
+		}
+
+		if condition.Type == ConditionCompleted || condition.Type == ConditionFailed {
+			in.Status = string(condition.Type)
+			in.StatusTime = condition.LastTransitionTime
+		}
+	}
 }

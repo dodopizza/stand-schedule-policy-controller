@@ -30,7 +30,7 @@ func (c *Controller) reconcile(i interface{}) error {
 	c.scheduleIfRequired(policy, ps)
 
 	c.logger.Info("Update policy status", zap.String("policy_name", policy.Name))
-	policy.Status.Conditions = ps.GetConditions()
+	policy.Status.UpdateConditions(ps.GetConditions())
 
 	_, err = c.kube.StandSchedulesClient().
 		StandSchedulesV1().
