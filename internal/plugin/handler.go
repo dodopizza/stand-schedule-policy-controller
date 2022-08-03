@@ -37,7 +37,8 @@ func NewStartupHandler() *Handler {
 
 func NewShutdownHandler() *Handler {
 	return &Handler{
-		Type: apis.StatusShutdown,
+		Type:        apis.StatusShutdown,
+		WaitTimeout: time.Minute * 5,
 	}
 }
 
