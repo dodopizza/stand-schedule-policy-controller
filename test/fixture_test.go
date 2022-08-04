@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"go.uber.org/zap"
+	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -123,6 +124,19 @@ func (f *fixture) WithPods(pods ...*core.Pod) *fixture {
 			CoreV1().
 			Pods(pod.Namespace).
 			Create(context.Background(), pod, meta.CreateOptions{})
+		if err != nil {
+			f.t.Error(err)
+		}
+	}
+	return f
+}
+
+func (f *fixture) WithDeployments(deployments ...*apps.Deployment) *fixture {
+	for _, deployment := range deployments {
+		_, err := f.kube.CoreClient().
+			AppsV1().
+			Deployments(deployment.Namespace).
+			Create(context.Background(), deployment, meta.CreateOptions{})
 		if err != nil {
 			f.t.Error(err)
 		}

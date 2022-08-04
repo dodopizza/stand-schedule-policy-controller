@@ -86,6 +86,27 @@ func (f *fixture) AssertResourceQuotaNotExists(namespace string) {
 	}
 }
 
+func (f *fixture) AssertDeploymentScaled(namespace string) {
+	list, err := f.kube.CoreClient().
+		AppsV1().
+		Deployments(namespace).
+		List(context.Background(), meta.ListOptions{})
+	if err != nil {
+		f.t.Errorf("Failed to list deployments in namespace %s", namespace)
+	}
+
+	for _, deployment := range list.Items {
+		_, exists := deployment.Annotations[apis.AnnotationPrefix+"/restore-replicas"]
+		if exists {
+			f.t.Errorf("Restore annotation exists in namespace %s for deployment %s", namespace, deployment.Name)
+		}
+
+		if deployment.Spec.Replicas != nil && *deployment.Spec.Replicas == 0 {
+			f.t.Errorf("Deployment %s replcias equal to zero in namespace %s", deployment.Name, namespace)
+		}
+	}
+}
+
 func Test_StartController(t *testing.T) {
 	f := NewFixture(t)
 
@@ -99,6 +120,7 @@ func Test_PolicyWithShutdown(t *testing.T) {
 	f := NewFixture(t).
 		WithNamespaces("namespace1").
 		WithPods(podObject("namespace1", "test-pod-1")).
+		WithDeployments(deploymentObject("namespace1", "test-deployment-1")).
 		WithPolicies(
 			&apis.StandSchedulePolicy{
 				ObjectMeta: meta.ObjectMeta{
@@ -127,6 +149,7 @@ func Test_PolicyWithStartup(t *testing.T) {
 	f := NewFixture(t).
 		WithNamespaces("namespace2").
 		WithZeroQuota("namespace2").
+		WithDeployments(disabledDeploymentObject("namespace2", "test-deployment-1")).
 		WithPolicies(
 			&apis.StandSchedulePolicy{
 				ObjectMeta: meta.ObjectMeta{
@@ -150,12 +173,14 @@ func Test_PolicyWithStartup(t *testing.T) {
 	f.IncreaseTime(time.Minute * 2)
 	f.WaitUntilPolicyStatus("test-policy2", apis.ConditionCompleted, apis.StatusStartup)
 	f.AssertResourceQuotaNotExists("namespace2")
+	f.AssertDeploymentScaled("namespace2")
 }
 
 func Test_PolicyWithShutdownOverride(t *testing.T) {
 	f := NewFixture(t).
 		WithNamespaces("namespace3").
 		WithPods(podObject("namespace3", "test-pod-1")).
+		WithDeployments(deploymentObject("namespace3", "test-deployment-1")).
 		WithPolicies(
 			&apis.StandSchedulePolicy{
 				ObjectMeta: meta.ObjectMeta{
@@ -187,6 +212,7 @@ func Test_PolicyWithStartupOverride(t *testing.T) {
 	f := NewFixture(t).
 		WithNamespaces("namespace4").
 		WithZeroQuota("namespace4").
+		WithDeployments(disabledDeploymentObject("namespace4", "test-deployment-1")).
 		WithPolicies(
 			&apis.StandSchedulePolicy{
 				ObjectMeta: meta.ObjectMeta{
@@ -212,6 +238,7 @@ func Test_PolicyWithStartupOverride(t *testing.T) {
 	f.IncreaseTime(time.Minute * 2)
 	f.WaitUntilPolicyStatus("test-policy4", apis.ConditionCompleted, apis.StatusStartup)
 	f.AssertResourceQuotaNotExists("namespace4")
+	f.AssertDeploymentScaled("namespace4")
 }
 
 func Test_PolicyWithShutdownStartup(t *testing.T) {
@@ -219,6 +246,7 @@ func Test_PolicyWithShutdownStartup(t *testing.T) {
 		WithClockTime(_Time.Round(time.Minute * 10)).
 		WithNamespaces("namespace5").
 		WithPods(podObject("namespace5", "test-pod-1")).
+		WithDeployments(deploymentObject("namespace5", "test-deployment-1")).
 		WithPolicies(
 			&apis.StandSchedulePolicy{
 				ObjectMeta: meta.ObjectMeta{
@@ -266,6 +294,7 @@ func Test_PolicyWithOverrides(t *testing.T) {
 		WithClockTime(_Time.Round(time.Minute * 10)).
 		WithNamespaces("namespace6").
 		WithPods(podObject("namespace6", "test-pod-1")).
+		WithDeployments(deploymentObject("namespace6", "test-deployment-1")).
 		WithPolicies(
 			&apis.StandSchedulePolicy{
 				ObjectMeta: meta.ObjectMeta{
