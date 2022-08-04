@@ -52,7 +52,7 @@ func NewForInternalCluster() (Interface, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newForConfig(cfg)
+	return NewForConfig(cfg)
 }
 
 func NewForExternalCluster() (Interface, error) {
@@ -69,7 +69,7 @@ func NewForExternalCluster() (Interface, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newForConfig(cfg)
+	return NewForConfig(cfg)
 }
 
 func NewForTest(env string) (Interface, error) {
@@ -78,7 +78,7 @@ func NewForTest(env string) (Interface, error) {
 	if err != nil {
 		return nil, err
 	}
-	return newForConfig(cfg)
+	return NewForConfig(cfg)
 }
 
 func NewPluginClient(clientGetter genericclioptions.RESTClientGetter) (Interface, error) {
@@ -96,10 +96,10 @@ func NewPluginClient(clientGetter genericclioptions.RESTClientGetter) (Interface
 	if len(restConfig.UserAgent) == 0 {
 		restConfig.UserAgent = rest.DefaultKubernetesUserAgent()
 	}
-	return newForConfig(restConfig)
+	return NewForConfig(restConfig)
 }
 
-func newForConfig(cfg *rest.Config) (*client, error) {
+func NewForConfig(cfg *rest.Config) (*client, error) {
 	kc, err := corecs.NewForConfig(cfg)
 	if err != nil {
 		return nil, err
