@@ -14,7 +14,7 @@ import (
 
 func (c *Controller) reconcile(i interface{}) error {
 	policyName := i.(string)
-	policy, err := c.lister.stands.Get(policyName)
+	policy, err := c.lister.Stands.Get(policyName)
 
 	if errors.IsNotFound(err) {
 		c.logger.Info("Deleted policy with name removed from execution", zap.String("policy_name", policyName))

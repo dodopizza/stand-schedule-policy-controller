@@ -21,7 +21,7 @@ const (
 	_MinWorkerQueueRetries     = 1
 )
 
-func (c *Config) GetResyncDuration() time.Duration {
+func (c *Config) GetResyncInterval() time.Duration {
 	if c.ResyncSeconds < _MinResyncSeconds {
 		return time.Duration(_DefaultResyncSeconds) * time.Second
 	}

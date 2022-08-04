@@ -58,7 +58,7 @@ func (c *Controller) execute(i interface{}) error {
 	}
 
 	state, exists := c.state.Get(item.policyName)
-	policy, err := c.lister.stands.Get(item.policyName)
+	policy, err := c.lister.Stands.Get(item.policyName)
 	if errors.IsNotFound(err) || !exists {
 		c.logger.Warn("Skip execution of policy because it not exists", zap.String("policy_name", item.policyName))
 		return nil

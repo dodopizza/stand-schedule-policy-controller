@@ -1,4 +1,4 @@
-package controller
+package kubernetes
 
 import (
 	core "k8s.io/client-go/listers/core/v1"
@@ -8,14 +8,14 @@ import (
 
 type (
 	ListerGroup struct {
-		ns     core.NamespaceLister
-		stands stands.StandSchedulePolicyLister
+		Namespaces core.NamespaceLister
+		Stands     stands.StandSchedulePolicyLister
 	}
 )
 
 func NewListerGroup(f *FactoryGroup) *ListerGroup {
 	return &ListerGroup{
-		ns:     f.core.Core().V1().Namespaces().Lister(),
-		stands: f.stands.StandSchedules().V1().StandSchedulePolicies().Lister(),
+		Namespaces: f.Core.Core().V1().Namespaces().Lister(),
+		Stands:     f.Stands.StandSchedules().V1().StandSchedulePolicies().Lister(),
 	}
 }

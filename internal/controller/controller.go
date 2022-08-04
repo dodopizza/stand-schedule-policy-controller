@@ -22,11 +22,11 @@ type (
 	Controller struct {
 		notify   chan error
 		logger   *zap.Logger
-		kube     kubernetes.Interface
 		clock    clock.WithTicker
 		state    *state.State
-		factory  *FactoryGroup
-		lister   *ListerGroup
+		kube     kubernetes.Interface
+		factory  *kubernetes.FactoryGroup
+		lister   *kubernetes.ListerGroup
 		events   *eventsource.EventSource[apis.StandSchedulePolicy]
 		workers  []*worker.Worker
 		executor *executor.Executor
@@ -47,10 +47,10 @@ func NewController(
 		clock:  clock,
 		state:  state.New(),
 	}
-	c.factory = NewFactoryGroup(k, cfg)
-	c.lister = NewListerGroup(c.factory)
+	c.factory = kubernetes.NewFactoryGroup(k, cfg.GetResyncInterval())
+	c.lister = kubernetes.NewListerGroup(c.factory)
 	c.events = eventsource.New[apis.StandSchedulePolicy](
-		c.factory.stands.StandSchedules().V1().StandSchedulePolicies(),
+		c.factory.Stands.StandSchedules().V1().StandSchedulePolicies(),
 		eventsource.Handlers[apis.StandSchedulePolicy]{
 			AddFunc:    c.add,
 			UpdateFunc: c.update,
@@ -61,14 +61,13 @@ func NewController(
 		worker.New(cfg.GetWorkerConfig("reconciler"), c.logger.Named("reconciler"), c.clock, c.reconcile),
 		worker.New(cfg.GetWorkerConfig("executor"), c.logger.Named("executor"), c.clock, c.execute),
 	}
-	c.executor = executor.New(c.logger, az, c.kube, c.lister.ns)
+	c.executor = executor.New(c.logger, az, c.kube, c.lister)
 	return c
 }
 
 func (c *Controller) Start(interrupt <-chan struct{}) {
 	c.logger.Info("Starting informers")
-	c.factory.core.Start(interrupt)
-	c.factory.stands.Start(interrupt)
+	c.factory.Start(interrupt)
 	c.logger.Info("Started informers")
 
 	c.logger.Info("Syncing caches")

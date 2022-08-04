@@ -11,7 +11,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	lcore "k8s.io/client-go/listers/core/v1"
 
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/azure"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/kubernetes"
@@ -24,10 +23,10 @@ import (
 
 type (
 	Executor struct {
-		logger     *zap.Logger
-		azure      azure.Interface
-		kube       kubernetes.Interface
-		namespaces lcore.NamespaceLister
+		logger *zap.Logger
+		azure  azure.Interface
+		kube   kubernetes.Interface
+		lister *kubernetes.ListerGroup
 	}
 )
 
@@ -39,26 +38,26 @@ func New(
 	l *zap.Logger,
 	az azure.Interface,
 	k kubernetes.Interface,
-	namespaces lcore.NamespaceLister,
+	lister *kubernetes.ListerGroup,
 ) *Executor {
 	return &Executor{
-		logger:     l.Named("executor"),
-		azure:      az,
-		kube:       k,
-		namespaces: namespaces,
+		logger: l.Named("executor"),
+		azure:  az,
+		kube:   k,
+		lister: lister,
 	}
 }
 
-func (e *Executor) ExecuteShutdown(policy *apis.StandSchedulePolicy) error {
-	namespaces, err := e.fetchNamespaces(policy.Spec.TargetNamespaceFilter, true)
+func (in *Executor) ExecuteShutdown(policy *apis.StandSchedulePolicy) error {
+	namespaces, err := in.fetchNamespaces(policy.Spec.TargetNamespaceFilter, true)
 	if err != nil {
-		e.logger.Warn("Failed to list target namespaces", zap.Error(err))
+		in.logger.Warn("Failed to list target namespaces", zap.Error(err))
 		return err
 	}
 
 	var summary error
 	for _, namespace := range namespaces {
-		e.logger.Debug("Create resource quota in namespace",
+		in.logger.Debug("Create resource quota in namespace",
 			zap.String("quota", _ResourceQuotaName),
 			zap.String("namespace", namespace))
 
@@ -81,14 +80,14 @@ func (e *Executor) ExecuteShutdown(policy *apis.StandSchedulePolicy) error {
 				},
 			},
 		}
-		_, err = e.kube.CoreClient().
+		_, err = in.kube.CoreClient().
 			CoreV1().
 			ResourceQuotas(namespace).
 			Create(context.Background(), quota, meta.CreateOptions{})
 		summary = multierr.Append(summary, kubernetes.IgnoreAlreadyExistsError(err))
 
-		e.logger.Debug("Delete all existing pods in namespace", zap.String("work_namespace", namespace))
-		err = e.kube.CoreClient().
+		in.logger.Debug("Delete all existing pods in namespace", zap.String("work_namespace", namespace))
+		err = in.kube.CoreClient().
 			CoreV1().
 			Pods(namespace).
 			DeleteCollection(context.Background(), meta.DeleteOptions{}, meta.ListOptions{})
@@ -98,20 +97,20 @@ func (e *Executor) ExecuteShutdown(policy *apis.StandSchedulePolicy) error {
 	return summary
 }
 
-func (e *Executor) ExecuteStartup(policy *apis.StandSchedulePolicy) error {
-	namespaces, err := e.fetchNamespaces(policy.Spec.TargetNamespaceFilter, false)
+func (in *Executor) ExecuteStartup(policy *apis.StandSchedulePolicy) error {
+	namespaces, err := in.fetchNamespaces(policy.Spec.TargetNamespaceFilter, false)
 	if err != nil {
-		e.logger.Warn("Failed to list target namespaces", zap.Error(err))
+		in.logger.Warn("Failed to list target namespaces", zap.Error(err))
 		return err
 	}
 
 	var summary error
 	for _, namespace := range namespaces {
-		e.logger.Debug("Delete resource quota in namespace",
+		in.logger.Debug("Delete resource quota in namespace",
 			zap.String("quota", _ResourceQuotaName),
 			zap.String("namespace", namespace))
 
-		err := e.kube.CoreClient().
+		err := in.kube.CoreClient().
 			CoreV1().
 			ResourceQuotas(namespace).
 			Delete(context.Background(), _ResourceQuotaName, meta.DeleteOptions{})
@@ -121,8 +120,8 @@ func (e *Executor) ExecuteStartup(policy *apis.StandSchedulePolicy) error {
 	return summary
 }
 
-func (e *Executor) fetchNamespaces(filter string, reverse bool) ([]string, error) {
-	list, err := e.namespaces.List(labels.Everything())
+func (in *Executor) fetchNamespaces(filter string, reverse bool) ([]string, error) {
+	list, err := in.lister.Namespaces.List(labels.Everything())
 	if err != nil {
 		return nil, err
 	}
