@@ -149,12 +149,16 @@ func (in *Executor) cleanupPods(namespace string) error {
 	in.logger.Debug("Delete all existing pods in namespace",
 		zap.String("namespace", namespace))
 
-	err := in.kube.CoreClient().
+	return in.kube.CoreClient().
 		CoreV1().
 		Pods(namespace).
-		DeleteCollection(context.Background(), meta.DeleteOptions{}, meta.ListOptions{})
-
-	return kubernetes.IgnoreTimeout(err)
+		DeleteCollection(
+			context.Background(),
+			meta.DeleteOptions{
+				PropagationPolicy: util.Pointer(meta.DeletePropagationBackground),
+			},
+			meta.ListOptions{},
+		)
 }
 
 func (in *Executor) deleteResourceQuota(namespace string) error {
