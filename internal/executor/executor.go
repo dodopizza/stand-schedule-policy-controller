@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"regexp"
+	"strings"
 
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
@@ -15,11 +16,11 @@ import (
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/azure"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/kubernetes"
 	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
+	"github.com/dodopizza/stand-schedule-policy-controller/pkg/util"
 )
 
 // todo: handle external resources
-// todo: restart & wait pods before completed/failed
-// todo: fetch namespaces with order
+// todo: scale deploy/sts before zero-quota
 
 type (
 	Executor struct {
@@ -49,7 +50,7 @@ func New(
 }
 
 func (e *Executor) ExecuteShutdown(policy *apis.StandSchedulePolicy) error {
-	namespaces, err := e.fetchNamespaces(policy.Spec.TargetNamespaceFilter)
+	namespaces, err := e.fetchNamespaces(policy.Spec.TargetNamespaceFilter, true)
 	if err != nil {
 		e.logger.Warn("Failed to list target namespaces", zap.Error(err))
 		return err
@@ -98,7 +99,7 @@ func (e *Executor) ExecuteShutdown(policy *apis.StandSchedulePolicy) error {
 }
 
 func (e *Executor) ExecuteStartup(policy *apis.StandSchedulePolicy) error {
-	namespaces, err := e.fetchNamespaces(policy.Spec.TargetNamespaceFilter)
+	namespaces, err := e.fetchNamespaces(policy.Spec.TargetNamespaceFilter, false)
 	if err != nil {
 		e.logger.Warn("Failed to list target namespaces", zap.Error(err))
 		return err
@@ -120,25 +121,34 @@ func (e *Executor) ExecuteStartup(policy *apis.StandSchedulePolicy) error {
 	return summary
 }
 
-func (e *Executor) fetchNamespaces(filter string) ([]string, error) {
-	result := []string{}
-
-	namespaces, err := e.namespaces.List(labels.Everything())
+func (e *Executor) fetchNamespaces(filter string, reverse bool) ([]string, error) {
+	list, err := e.namespaces.List(labels.Everything())
 	if err != nil {
-		return result, err
+		return nil, err
+	}
+	return SortNamespaces(list, filter, reverse), nil
+
+}
+
+func SortNamespaces(objects []*core.Namespace, filter string, reverse bool) []string {
+	var (
+		namespaces []string
+		filters    = strings.Split(filter, "|")
+	)
+
+	if reverse {
+		filters = util.Reverse(filters)
 	}
 
-	for _, namespace := range namespaces {
-		matched, err := regexp.MatchString(filter, namespace.Name)
+	for _, f := range filters {
+		for _, namespace := range objects {
+			matched, _ := regexp.MatchString(f, namespace.Name)
 
-		if err != nil {
-			continue
-		}
-
-		if matched {
-			result = append(result, namespace.Name)
+			if matched {
+				namespaces = append(namespaces, namespace.Name)
+			}
 		}
 	}
 
-	return result, nil
+	return namespaces
 }
