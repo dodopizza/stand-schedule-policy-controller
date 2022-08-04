@@ -22,10 +22,6 @@ type (
 	}
 )
 
-const (
-	_ResourceQuotaName = "zero-quota"
-)
-
 func (w *WorkItem) String() string {
 	return fmt.Sprintf("%s/%s at %s", w.policyName, w.scheduleType, w.fireAt)
 }

@@ -16,10 +16,10 @@ type (
 	}
 )
 
-func NewFactoryGroup(k Interface, resyncInterval time.Duration) *FactoryGroup {
+func NewFactoryGroup(k Interface, coreRI, standsRI time.Duration) *FactoryGroup {
 	return &FactoryGroup{
-		Core:   core.NewSharedInformerFactory(k.CoreClient(), resyncInterval),
-		Stands: stands.NewSharedInformerFactory(k.StandSchedulesClient(), resyncInterval),
+		Core:   core.NewSharedInformerFactory(k.CoreClient(), coreRI),
+		Stands: stands.NewSharedInformerFactory(k.StandSchedulesClient(), standsRI),
 	}
 }
 

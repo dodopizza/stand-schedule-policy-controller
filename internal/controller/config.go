@@ -8,24 +8,27 @@ import (
 
 type (
 	Config struct {
-		ResyncSeconds          int `json:"resync_seconds" env:"CONTROLLER_RESYNC_SECONDS"`
+		ObjectsResyncSeconds   int `json:"core_resync_seconds" env:"CONTROLLER_OBJECTS_RESYNC_SECONDS"`
+		PoliciesResyncSeconds  int `json:"policies_resync_seconds" env:"CONTROLLER_POLICIES_RESYNC_SECONDS"`
 		WorkerQueueThreadiness int `json:"worker_queue_threadiness" env:"CONTROLLER_WORKER_QUEUE_THREADINESS"`
 		WorkerQueueRetries     int `json:"worker_queue_retries" env:"CONTROLLER_WORKER_QUEUE_RETRIES"`
 	}
 )
 
 const (
-	_DefaultResyncSeconds      = 300 // 5 min
-	_MinResyncSeconds          = 10
-	_DefaultWorkerQueueRetries = 5
-	_MinWorkerQueueRetries     = 1
+	_DefaultPoliciesResyncSeconds = 300 // 5 min
+	_DefaultObjectsResyncSeconds  = 60  // 1 min
+	_MinResyncSeconds             = 10
+	_DefaultWorkerQueueRetries    = 5
+	_MinWorkerQueueRetries        = 1
 )
 
-func (c *Config) GetResyncInterval() time.Duration {
-	if c.ResyncSeconds < _MinResyncSeconds {
-		return time.Duration(_DefaultResyncSeconds) * time.Second
-	}
-	return time.Duration(c.ResyncSeconds) * time.Second
+func (c *Config) GetObjectsResyncInterval() time.Duration {
+	return c.getResyncInterval(c.ObjectsResyncSeconds, _MinResyncSeconds, _DefaultObjectsResyncSeconds)
+}
+
+func (c *Config) GetPoliciesResyncInterval() time.Duration {
+	return c.getResyncInterval(c.PoliciesResyncSeconds, _MinResyncSeconds, _DefaultPoliciesResyncSeconds)
 }
 
 func (c *Config) GetThreadiness() int {
@@ -48,4 +51,11 @@ func (c *Config) GetWorkerConfig(name string) *worker.Config {
 		Retries:     c.GetWorkerQueueRetries(),
 		Threadiness: c.GetThreadiness(),
 	}
+}
+
+func (c *Config) getResyncInterval(actual, min, def int) time.Duration {
+	if actual < min {
+		return time.Duration(def) * time.Second
+	}
+	return time.Duration(actual) * time.Second
 }

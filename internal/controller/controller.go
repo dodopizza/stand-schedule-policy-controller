@@ -47,7 +47,7 @@ func NewController(
 		clock:  clock,
 		state:  state.New(),
 	}
-	c.factory = kubernetes.NewFactoryGroup(k, cfg.GetResyncInterval())
+	c.factory = kubernetes.NewFactoryGroup(k, cfg.GetObjectsResyncInterval(), cfg.GetPoliciesResyncInterval())
 	c.lister = kubernetes.NewListerGroup(c.factory)
 	c.events = eventsource.New[apis.StandSchedulePolicy](
 		c.factory.Stands.StandSchedules().V1().StandSchedulePolicies(),

@@ -64,7 +64,8 @@ func NewFixture(t *testing.T) *fixture {
 
 	return &fixture{
 		cfg: &controller.Config{
-			ResyncSeconds:          10,
+			ObjectsResyncSeconds:   10,
+			PoliciesResyncSeconds:  10,
 			WorkerQueueThreadiness: 1,
 			WorkerQueueRetries:     5,
 		},

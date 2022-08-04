@@ -1,9 +1,28 @@
 package util
 
-func Reverse[T any](source []T) []T {
-	var rev []T
+import (
+	"go.uber.org/multierr"
+)
+
+func Reverse[T any](source []T) (ret []T) {
 	for _, n := range source {
-		rev = append([]T{n}, rev...)
+		ret = append([]T{n}, ret...)
 	}
-	return rev
+	return ret
+}
+
+func Where[T any](source []T, f func(i int, t T) bool) (ret []T) {
+	for i, t := range source {
+		if f(i, t) {
+			ret = append(ret, t)
+		}
+	}
+	return ret
+}
+
+func ForEachE[T any](source []T, f func(i int, t T) error) (err error) {
+	for i, t := range source {
+		err = multierr.Append(err, f(i, t))
+	}
+	return err
 }
