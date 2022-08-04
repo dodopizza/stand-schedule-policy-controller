@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"time"
 
 	"go.uber.org/zap"
 
@@ -9,6 +10,7 @@ import (
 	"k8s.io/utils/clock"
 
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/azure"
+	"github.com/dodopizza/stand-schedule-policy-controller/internal/executor"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/kubernetes"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/state"
 	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
@@ -18,17 +20,16 @@ import (
 
 type (
 	Controller struct {
-		notify     chan error
-		logger     *zap.Logger
-		kube       kubernetes.Interface
-		azure      azure.Interface
-		clock      clock.WithTicker
-		state      *state.State
-		reconciler *worker.Worker
-		executor   *worker.Worker
-		factory    *FactoryGroup
-		lister     *ListerGroup
-		events     *eventsource.EventSource[apis.StandSchedulePolicy]
+		notify   chan error
+		logger   *zap.Logger
+		kube     kubernetes.Interface
+		clock    clock.WithTicker
+		state    *state.State
+		factory  *FactoryGroup
+		lister   *ListerGroup
+		events   *eventsource.EventSource[apis.StandSchedulePolicy]
+		workers  []*worker.Worker
+		executor *executor.Executor
 	}
 )
 
@@ -43,7 +44,6 @@ func NewController(
 		notify: make(chan error, 1),
 		logger: l.Named("controller"),
 		kube:   k,
-		azure:  az,
 		clock:  clock,
 		state:  state.New(),
 	}
@@ -57,8 +57,11 @@ func NewController(
 			DeleteFunc: c.delete,
 		},
 	)
-	c.reconciler = worker.New(cfg.GetWorkerConfig("reconciler"), c.logger.Named("reconciler"), c.clock, c.reconcile)
-	c.executor = worker.New(cfg.GetWorkerConfig("executor"), c.logger.Named("executor"), c.clock, c.execute)
+	c.workers = []*worker.Worker{
+		worker.New(cfg.GetWorkerConfig("reconciler"), c.logger.Named("reconciler"), c.clock, c.reconcile),
+		worker.New(cfg.GetWorkerConfig("executor"), c.logger.Named("executor"), c.clock, c.execute),
+	}
+	c.executor = executor.New(c.logger, az, c.kube, c.lister.ns)
 	return c
 }
 
@@ -78,11 +81,10 @@ func (c *Controller) Start(interrupt <-chan struct{}) {
 	c.logger.Info("Synced caches")
 
 	c.logger.Info("Starting workers")
-	c.reconciler.Start(interrupt)
-	c.executor.Start(interrupt)
+	for _, w := range c.workers {
+		w.Start(interrupt)
+	}
 	c.logger.Info("Started workers")
-
-	go c.handleShutdown(interrupt)
 }
 
 func (c *Controller) Notify() <-chan error {
@@ -101,10 +103,10 @@ func (c *Controller) handleCachesDesyncFor(name string) {
 	close(c.notify)
 }
 
-func (c *Controller) handleShutdown(interrupt <-chan struct{}) {
-	<-interrupt
+func (c *Controller) enqueueReconcile(key string) {
+	c.workers[0].Enqueue(key)
+}
 
-	c.logger.Info("Shutting down workers")
-	c.reconciler.Shutdown()
-	c.executor.Shutdown()
+func (c *Controller) enqueueExecute(item WorkItem, ts time.Duration) {
+	c.workers[1].EnqueueAfter(item, ts)
 }

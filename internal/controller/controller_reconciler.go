@@ -86,5 +86,5 @@ func (c *Controller) schedule(
 		fireAt:       schedule.GetFireTime(),
 	}
 
-	c.executor.EnqueueAfter(item, schedule.GetFireTime().Sub(ts))
+	c.enqueueExecute(item, schedule.GetFireTime().Sub(ts))
 }

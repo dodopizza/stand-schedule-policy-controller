@@ -47,10 +47,8 @@ func (w *Worker) Start(interrupt <-chan struct{}) {
 	for i := 0; i < w.config.Threadiness; i++ {
 		go wait.Until(w.process, time.Second, interrupt)
 	}
-}
 
-func (w *Worker) Shutdown() {
-	w.queue.ShutDown()
+	go w.shutdown(interrupt)
 }
 
 func (w *Worker) Enqueue(item interface{}) {
@@ -59,6 +57,11 @@ func (w *Worker) Enqueue(item interface{}) {
 
 func (w *Worker) EnqueueAfter(item interface{}, duration time.Duration) {
 	w.queue.AddAfter(item, duration)
+}
+
+func (w *Worker) shutdown(interrupt <-chan struct{}) {
+	<-interrupt
+	w.queue.ShutDown()
 }
 
 func (w *Worker) process() {
