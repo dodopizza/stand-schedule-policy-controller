@@ -30,13 +30,13 @@ func New(l *zap.Logger, az azure.Interface, k kubernetes.Interface, lister *kube
 func (in *Executor) ExecuteShutdown(policy *apis.StandSchedulePolicy) error {
 	return multierr.Combine(
 		in.executeShutdownKube(policy),
-		in.executeShutdownAzure(policy),
+		in.executeShutdownAzure(policy.Spec.Resources.Azure),
 	)
 }
 
 func (in *Executor) ExecuteStartup(policy *apis.StandSchedulePolicy) error {
 	return multierr.Combine(
-		in.executeStartupAzure(policy),
+		in.executeStartupAzure(policy.Spec.Resources.Azure),
 		in.executeStartupKube(policy),
 	)
 }

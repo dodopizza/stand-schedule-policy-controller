@@ -2,6 +2,8 @@ package azure
 
 import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
+
+	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
 )
 
 type (
@@ -35,4 +37,15 @@ func (r Resource) GetName() string {
 
 func (r Resource) GetResourceGroup() string {
 	return r.id.ResourceGroupName
+}
+
+func From(api apis.AzureResourceType) (ResourceType, error) {
+	switch api {
+	case apis.AzureResourceManagedMySQL:
+		return ResourceManagedMySQL, nil
+	case apis.AzureResourceVirtualMachine:
+		return ResourceVirtualMachine, nil
+	default:
+		return "", ErrUnsupportedType
+	}
 }

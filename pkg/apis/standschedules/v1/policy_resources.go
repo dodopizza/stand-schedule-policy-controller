@@ -7,6 +7,7 @@ Authored by The Infrastructure Platform Team.
 package v1
 
 type AzureResourceType string
+type AzureResourceList []AzureResource
 
 const (
 	AzureResourceManagedMySQL   AzureResourceType = "mysql"
@@ -15,7 +16,7 @@ const (
 
 type ResourcesSpec struct {
 	// Azure contains an array of related azure resources.
-	Azure []AzureResource `json:"azure,omitempty"`
+	Azure AzureResourceList `json:"azure,omitempty"`
 }
 
 type AzureResource struct {
@@ -30,4 +31,16 @@ type AzureResource struct {
 
 	// Priority specifies order in which resources will be started or shutdowned.
 	Priority int64 `json:"priority"`
+}
+
+func (l AzureResourceList) Len() int {
+	return len(l)
+}
+
+func (l AzureResourceList) Less(i, j int) bool {
+	return l[i].Priority < l[j].Priority
+}
+
+func (l AzureResourceList) Swap(i, j int) {
+	l[i], l[j] = l[j], l[i]
 }
