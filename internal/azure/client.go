@@ -5,14 +5,17 @@ import (
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/compute/armcompute/v3"
+	"github.com/Azure/azure-sdk-for-go/sdk/resourcemanager/mysql/armmysql"
 )
 
 type (
 	Client struct {
 		Cred azcore.TokenCredential
-		cfg  *Config
-	}
-	Interface interface {
+
+		cfg   *Config
+		mysql *armmysql.ServersClient
+		vms   *armcompute.VirtualMachinesClient
 	}
 	Config struct {
 		AuthType       string `env-required:"true" json:"auth_type" env:"AZURE_AUTH_TYPE"`
@@ -48,5 +51,22 @@ func NewForDefaultAuth(cfg *Config) (*Client, error) {
 }
 
 func NewClient(cred azcore.TokenCredential, cfg *Config) (*Client, error) {
-	return &Client{cred, cfg}, nil
+	client := &Client{
+		Cred: cred,
+		cfg:  cfg,
+	}
+
+	mysql, err := armmysql.NewServersClient(client.cfg.SubscriptionId, client.Cred, nil)
+	if err != nil {
+		return nil, err
+	}
+	client.mysql = mysql
+
+	vms, err := armcompute.NewVirtualMachinesClient(client.cfg.SubscriptionId, client.Cred, nil)
+	if err != nil {
+		return nil, err
+	}
+	client.vms = vms
+
+	return client, nil
 }
