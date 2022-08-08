@@ -58,8 +58,8 @@ func NewController(
 		},
 	)
 	c.workers = []*worker.Worker{
-		worker.New(cfg.GetWorkerConfig("reconciler"), c.logger.Named("reconciler"), c.clock, c.reconcile),
-		worker.New(cfg.GetWorkerConfig("executor"), c.logger.Named("executor"), c.clock, c.execute),
+		worker.New(cfg.GetReconcilerConfig(), c.logger.Named("reconciler"), c.clock, c.reconcile),
+		worker.New(cfg.GetExecutorConfig(), c.logger.Named("executor"), c.clock, c.execute),
 	}
 	c.executor = executor.New(c.logger, az, c.kube, c.lister)
 	return c

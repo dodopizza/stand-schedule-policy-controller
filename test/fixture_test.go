@@ -48,10 +48,11 @@ func NewFixture(t *testing.T) *fixture {
 
 	return &fixture{
 		cfg: &controller.Config{
-			ObjectsResyncSeconds:   10,
-			PoliciesResyncSeconds:  10,
-			WorkerQueueThreadiness: 1,
-			WorkerQueueRetries:     5,
+			ObjectsResyncSeconds:  10,
+			PoliciesResyncSeconds: 10,
+			ReconcilerThreadiness: 1,
+			ExecutorThreadiness:   1,
+			WorkerQueueRetries:    5,
 		},
 		kube:      k,
 		azure:     &azureFixture{},
