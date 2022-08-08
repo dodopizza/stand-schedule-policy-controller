@@ -12,8 +12,6 @@ import (
 	"github.com/dodopizza/stand-schedule-policy-controller/pkg/util"
 )
 
-// todo: group by priority & do parallel
-
 func (in *Executor) executeShutdownAzure(filters apis.AzureResourceList) error {
 	sort.Sort(filters)
 
@@ -23,8 +21,10 @@ func (in *Executor) executeShutdownAzure(filters apis.AzureResourceList) error {
 		return err
 	}
 
-	return util.ForEachE(resources, func(_ int, resource *azure.Resource) error {
-		return in.azure.Shutdown(context.Background(), resource, false)
+	return util.ForEachE(util.MapKeys(resources), func(_ int, key int64) error {
+		return util.ForEachParallelE(resources[key], func(_ int, resource *azure.Resource) error {
+			return in.azure.Shutdown(context.Background(), resource, false)
+		})
 	})
 }
 
@@ -37,12 +37,14 @@ func (in *Executor) executeStartupAzure(filters apis.AzureResourceList) error {
 		return err
 	}
 
-	return util.ForEachE(resources, func(_ int, resource *azure.Resource) error {
-		return in.azure.Startup(context.Background(), resource, true)
+	return util.ForEachE(util.MapKeys(resources), func(_ int, key int64) error {
+		return util.ForEachParallelE(resources[key], func(_ int, resource *azure.Resource) error {
+			return in.azure.Startup(context.Background(), resource, true)
+		})
 	})
 }
 
-func (in *Executor) fetchAzureResources(ctx context.Context, filters apis.AzureResourceList) (ret []*azure.Resource, err error) {
+func (in *Executor) fetchAzureResources(ctx context.Context, filters apis.AzureResourceList) (ret map[int64][]*azure.Resource, err error) {
 	return ret, util.ForEachE(filters, func(_ int, filter apis.AzureResource) error {
 		t, err := azure.From(filter.Type)
 		if err != nil {
@@ -58,7 +60,7 @@ func (in *Executor) fetchAzureResources(ctx context.Context, filters apis.AzureR
 			match, _ := regexp.MatchString(filter.ResourceNameFilter, resource.GetName())
 
 			if match {
-				ret = append(ret, resource)
+				ret[filter.Priority] = append(ret[filter.Priority], resource)
 			}
 		}
 
