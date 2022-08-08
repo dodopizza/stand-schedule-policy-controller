@@ -3,6 +3,7 @@ package executor
 import (
 	"context"
 	"strconv"
+	"time"
 
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
@@ -11,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/kubernetes"
 	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
@@ -20,14 +22,13 @@ import (
 const (
 	_ResourceQuotaName  = "zero-quota"
 	_ReplicasAnnotation = apis.AnnotationPrefix + "/restore-replicas"
+	_WaitPodsTimeout    = time.Second * 180
+	_WaitPodsInterval   = time.Second * 15
 )
-
-// todo: wait pods between scales
 
 func (in *Executor) executeShutdownKube(policy *apis.StandSchedulePolicy) error {
 	namespaces, err := in.fetchNamespaces(policy.Spec.TargetNamespaceFilter, true)
 	if err != nil {
-		in.logger.Warn("Failed to list target namespaces", zap.Error(err))
 		return err
 	}
 
@@ -43,7 +44,6 @@ func (in *Executor) executeShutdownKube(policy *apis.StandSchedulePolicy) error 
 func (in *Executor) executeStartupKube(policy *apis.StandSchedulePolicy) error {
 	namespaces, err := in.fetchNamespaces(policy.Spec.TargetNamespaceFilter, false)
 	if err != nil {
-		in.logger.Warn("Failed to list target namespaces", zap.Error(err))
 		return err
 	}
 
@@ -89,8 +89,7 @@ func (in *Executor) createResourceQuota(namespace string, policy *apis.StandSche
 }
 
 func (in *Executor) scaleDownApps(namespace string) error {
-	in.logger.Debug("ScaleDown deployments and statefulSets in namespace",
-		zap.String("namespace", namespace))
+	in.logger.Debug("ScaleDown deployments and statefulSets in namespace", zap.String("namespace", namespace))
 
 	deployments, err := in.lister.Deployments.Deployments(namespace).List(labels.Everything())
 	if err != nil {
@@ -125,8 +124,7 @@ func (in *Executor) scaleDownApps(namespace string) error {
 }
 
 func (in *Executor) cleanupPods(namespace string) error {
-	in.logger.Debug("Delete all existing pods in namespace",
-		zap.String("namespace", namespace))
+	in.logger.Debug("Delete all existing pods in namespace", zap.String("namespace", namespace))
 
 	return in.kube.CoreClient().
 		CoreV1().
@@ -154,8 +152,7 @@ func (in *Executor) deleteResourceQuota(namespace string) error {
 }
 
 func (in *Executor) scaleUpApps(namespace string) error {
-	in.logger.Debug("ScaleUp deployments and statefulSets in namespace",
-		zap.String("namespace", namespace))
+	in.logger.Debug("ScaleUp deployments and statefulSets in namespace", zap.String("namespace", namespace))
 
 	deployments, err := in.lister.Deployments.Deployments(namespace).List(labels.Everything())
 	if err != nil {
@@ -184,6 +181,7 @@ func (in *Executor) scaleUpApps(namespace string) error {
 			delete(sts.ObjectMeta.Annotations, _ReplicasAnnotation)
 			return in.updateStatefulSet(sts)
 		}),
+		in.waitPods(namespace),
 		util.ForEachE(deployments, func(_ int, deployment *apps.Deployment) error {
 			replicas, _ := strconv.Atoi(deployment.ObjectMeta.Annotations[_ReplicasAnnotation])
 			deployment.Spec.Replicas = util.Pointer(int32(replicas))
@@ -191,6 +189,28 @@ func (in *Executor) scaleUpApps(namespace string) error {
 			return in.updateDeployment(deployment)
 		}),
 	)
+}
+
+func (in *Executor) waitPods(namespace string) error {
+	return wait.Poll(_WaitPodsInterval, _WaitPodsTimeout, func() (bool, error) {
+		in.logger.Debug("Wait pods in namespace", zap.String("namespace", namespace))
+
+		podList, err := in.kube.CoreClient().
+			CoreV1().
+			Pods(namespace).
+			List(context.Background(), meta.ListOptions{})
+		if err != nil {
+			return false, err
+		}
+
+		for _, pod := range podList.Items {
+			if pod.Status.Phase == core.PodPending {
+				return false, err
+			}
+		}
+
+		return true, nil
+	})
 }
 
 func (in *Executor) updateDeployment(deployment *apps.Deployment) error {
@@ -212,8 +232,8 @@ func (in *Executor) updateStatefulSet(sts *apps.StatefulSet) error {
 func (in *Executor) fetchNamespaces(filter string, reverse bool) ([]string, error) {
 	list, err := in.lister.Namespaces.List(labels.Everything())
 	if err != nil {
+		in.logger.Warn("Failed to list target namespaces", zap.Error(err))
 		return nil, err
 	}
 	return SortNamespaces(list, filter, reverse), nil
-
 }
