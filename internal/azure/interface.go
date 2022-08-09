@@ -26,7 +26,7 @@ const (
 	PollerInterval = time.Second * 10
 )
 
-func (c *Client) List(ctx context.Context, resourceType ResourceType, resourceGroup string) ([]*Resource, error) {
+func (c *client) List(ctx context.Context, resourceType ResourceType, resourceGroup string) ([]*Resource, error) {
 	switch resourceType {
 	case ResourceManagedMySQL:
 		pager := c.mysql.NewListByResourceGroupPager(resourceGroup, nil)
@@ -49,7 +49,7 @@ func (c *Client) List(ctx context.Context, resourceType ResourceType, resourceGr
 	}
 }
 
-func (c *Client) Shutdown(ctx context.Context, resource *Resource, wait bool) error {
+func (c *client) Shutdown(ctx context.Context, resource *Resource, wait bool) error {
 	switch resource.GetType() {
 	case ResourceManagedMySQL:
 		return ExecuteOperation(ctx, resource, wait,
@@ -66,7 +66,7 @@ func (c *Client) Shutdown(ctx context.Context, resource *Resource, wait bool) er
 	}
 }
 
-func (c *Client) Startup(ctx context.Context, resource *Resource, wait bool) error {
+func (c *client) Startup(ctx context.Context, resource *Resource, wait bool) error {
 	switch resource.GetType() {
 	case ResourceManagedMySQL:
 		return ExecuteOperation(ctx, resource, wait,

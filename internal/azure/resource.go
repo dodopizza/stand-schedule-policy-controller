@@ -28,7 +28,7 @@ func NewResource(rawId string) *Resource {
 }
 
 func (r Resource) GetType() ResourceType {
-	return ResourceType(r.id.ResourceType.Type)
+	return ResourceType(r.id.ResourceType.String())
 }
 
 func (r Resource) GetName() string {

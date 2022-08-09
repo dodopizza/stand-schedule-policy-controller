@@ -337,3 +337,54 @@ func Test_PolicyWithOverrides(t *testing.T) {
 	f.WaitUntilPolicyStatus("test-policy6", apis.ConditionCompleted, apis.StatusStartup)
 	f.WaitUntilPolicyStatus("test-policy6", apis.ConditionCompleted, apis.StatusShutdown)
 }
+
+func Test_PolicyWithExternalResources(t *testing.T) {
+	f := NewFixture(t).
+		WithNamespaces("namespace7").
+		WithPods(podObject("namespace7", "test-pod-1")).
+		WithDeployments(deploymentObject("namespace7", "test-deployment-1")).
+		WithAzureResources(
+			azureMySQL("test-1-rg", "test-mysql-1"),
+			azureMySQL("test-1-rg", "test-mysql-2"),
+			azureVM("test-2-rg", "test-vm-1"),
+			azureVM("test-2-rg", "test-vm-2"),
+		).
+		WithPolicies(
+			&apis.StandSchedulePolicy{
+				ObjectMeta: meta.ObjectMeta{
+					Name: "test-policy7",
+				},
+				Spec: apis.StandSchedulePolicySpec{
+					TargetNamespaceFilter: "namespace7",
+					Schedules: apis.SchedulesSpec{
+						Startup:  apis.CronSchedule{Cron: "@yearly"},
+						Shutdown: apis.CronSchedule{Cron: "* * * * *"},
+					},
+					Resources: apis.ResourcesSpec{
+						Azure: apis.AzureResourceList{
+							{
+								Type:               apis.AzureResourceVirtualMachine,
+								ResourceGroupName:  "test-2-rg",
+								ResourceNameFilter: "test-vm",
+								Priority:           0,
+							},
+							{
+								Type:               apis.AzureResourceManagedMySQL,
+								ResourceGroupName:  "test-1-rg",
+								ResourceNameFilter: "test-mysql",
+								Priority:           1,
+							},
+						},
+					},
+				},
+			},
+		)
+
+	c := f.CreateController()
+	f.AssertControllerStarted(c)
+
+	f.WaitUntilPolicyStatus("test-policy7", apis.ConditionScheduled, apis.StatusShutdown)
+	f.IncreaseTime(time.Minute * 1)
+	f.WaitUntilPolicyStatus("test-policy7", apis.ConditionCompleted, apis.StatusShutdown)
+	f.AssertNamespaceEmptyOrPodsTerminated("namespace7")
+}

@@ -10,20 +10,19 @@ import (
 )
 
 type (
-	Client struct {
-		Cred azcore.TokenCredential
-
-		cfg   *Config
-		mysql *armmysql.ServersClient
-		vms   *armcompute.VirtualMachinesClient
-	}
 	Config struct {
 		AuthType       string `env-required:"true" json:"auth_type" env:"AZURE_AUTH_TYPE"`
 		SubscriptionId string `env-required:"true" json:"subscription_id" env:"AZURE_SUBSCRIPTION_ID"`
 	}
+	client struct {
+		cred  azcore.TokenCredential
+		cfg   *Config
+		mysql *armmysql.ServersClient
+		vms   *armcompute.VirtualMachinesClient
+	}
 )
 
-func NewForConfig(cfg *Config) (*Client, error) {
+func NewForConfig(cfg *Config) (Interface, error) {
 	switch cfg.AuthType {
 	case "default":
 		return NewForDefaultAuth(cfg)
@@ -34,7 +33,7 @@ func NewForConfig(cfg *Config) (*Client, error) {
 	}
 }
 
-func NewForMsiAuth(cfg *Config) (*Client, error) {
+func NewForMsiAuth(cfg *Config) (Interface, error) {
 	c, err := azidentity.NewManagedIdentityCredential(nil)
 	if err != nil {
 		return nil, err
@@ -42,7 +41,7 @@ func NewForMsiAuth(cfg *Config) (*Client, error) {
 	return NewClient(c, cfg)
 }
 
-func NewForDefaultAuth(cfg *Config) (*Client, error) {
+func NewForDefaultAuth(cfg *Config) (Interface, error) {
 	c, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
 		return nil, err
@@ -50,19 +49,19 @@ func NewForDefaultAuth(cfg *Config) (*Client, error) {
 	return NewClient(c, cfg)
 }
 
-func NewClient(cred azcore.TokenCredential, cfg *Config) (*Client, error) {
-	client := &Client{
-		Cred: cred,
+func NewClient(cred azcore.TokenCredential, cfg *Config) (Interface, error) {
+	client := &client{
+		cred: cred,
 		cfg:  cfg,
 	}
 
-	mysql, err := armmysql.NewServersClient(client.cfg.SubscriptionId, client.Cred, nil)
+	mysql, err := armmysql.NewServersClient(client.cfg.SubscriptionId, client.cred, nil)
 	if err != nil {
 		return nil, err
 	}
 	client.mysql = mysql
 
-	vms, err := armcompute.NewVirtualMachinesClient(client.cfg.SubscriptionId, client.Cred, nil)
+	vms, err := armcompute.NewVirtualMachinesClient(client.cfg.SubscriptionId, client.cred, nil)
 	if err != nil {
 		return nil, err
 	}

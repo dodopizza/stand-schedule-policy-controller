@@ -3,10 +3,13 @@
 package test
 
 import (
+	"fmt"
+
 	apps "k8s.io/api/apps/v1"
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/dodopizza/stand-schedule-policy-controller/internal/azure"
 	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
 	"github.com/dodopizza/stand-schedule-policy-controller/pkg/util"
 )
@@ -93,4 +96,14 @@ func disabledDeploymentObject(namespace, name string) *apps.Deployment {
 			},
 		},
 	}
+}
+
+func azureMySQL(rg, name string) *azure.Resource {
+	return azure.NewResource(
+		fmt.Sprintf("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/%s/providers/Microsoft.DBforMySQL/servers/%s", rg, name))
+}
+
+func azureVM(rg, name string) *azure.Resource {
+	return azure.NewResource(
+		fmt.Sprintf("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/%s/providers/Microsoft.Compute/virtualMachines/%s", rg, name))
 }

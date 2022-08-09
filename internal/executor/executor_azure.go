@@ -12,46 +12,48 @@ import (
 	"github.com/dodopizza/stand-schedule-policy-controller/pkg/util"
 )
 
-func (in *Executor) executeShutdownAzure(filters apis.AzureResourceList) error {
+func (ex *Executor) executeShutdownAzure(filters apis.AzureResourceList) error {
 	sort.Sort(filters)
 
-	resources, err := in.fetchAzureResources(context.Background(), filters)
+	resources, err := ex.fetchAzureResources(context.Background(), filters)
 	if err != nil {
-		in.logger.Warn("Failed to list target azure resources", zap.Error(err))
+		ex.logger.Warn("Failed to list target azure resources", zap.Error(err))
 		return err
 	}
 
 	return util.ForEachE(util.MapKeys(resources), func(_ int, key int64) error {
 		return util.ForEachParallelE(resources[key], func(_ int, resource *azure.Resource) error {
-			return in.azure.Shutdown(context.Background(), resource, false)
+			return ex.azure.Shutdown(context.Background(), resource, false)
 		})
 	})
 }
 
-func (in *Executor) executeStartupAzure(filters apis.AzureResourceList) error {
+func (ex *Executor) executeStartupAzure(filters apis.AzureResourceList) error {
 	sort.Sort(sort.Reverse(filters))
 
-	resources, err := in.fetchAzureResources(context.Background(), filters)
+	resources, err := ex.fetchAzureResources(context.Background(), filters)
 	if err != nil {
-		in.logger.Warn("Failed to list target azure resources", zap.Error(err))
+		ex.logger.Warn("Failed to list target azure resources", zap.Error(err))
 		return err
 	}
 
 	return util.ForEachE(util.MapKeys(resources), func(_ int, key int64) error {
 		return util.ForEachParallelE(resources[key], func(_ int, resource *azure.Resource) error {
-			return in.azure.Startup(context.Background(), resource, true)
+			return ex.azure.Startup(context.Background(), resource, true)
 		})
 	})
 }
 
-func (in *Executor) fetchAzureResources(ctx context.Context, filters apis.AzureResourceList) (ret map[int64][]*azure.Resource, err error) {
+func (ex *Executor) fetchAzureResources(ctx context.Context, filters apis.AzureResourceList) (map[int64][]*azure.Resource, error) {
+	ret := make(map[int64][]*azure.Resource)
+
 	return ret, util.ForEachE(filters, func(_ int, filter apis.AzureResource) error {
-		t, err := azure.From(filter.Type)
+		azureType, err := azure.From(filter.Type)
 		if err != nil {
 			return err
 		}
 
-		list, err := in.azure.List(ctx, t, filter.ResourceGroupName)
+		list, err := ex.azure.List(ctx, azureType, filter.ResourceGroupName)
 		if err != nil {
 			return err
 		}

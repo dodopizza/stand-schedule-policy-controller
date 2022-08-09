@@ -26,37 +26,37 @@ const (
 	_WaitPodsInterval   = time.Second * 15
 )
 
-func (in *Executor) executeShutdownKube(policy *apis.StandSchedulePolicy) error {
-	namespaces, err := in.fetchNamespaces(policy.Spec.TargetNamespaceFilter, true)
+func (ex *Executor) executeShutdownKube(policy *apis.StandSchedulePolicy) error {
+	namespaces, err := ex.fetchNamespaces(policy.Spec.TargetNamespaceFilter, true)
 	if err != nil {
 		return err
 	}
 
 	return util.ForEachE(namespaces, func(_ int, namespace string) error {
 		return multierr.Combine(
-			in.scaleDownApps(namespace),
-			in.createResourceQuota(namespace, policy),
-			in.cleanupPods(namespace),
+			ex.scaleDownApps(namespace),
+			ex.createResourceQuota(namespace, policy),
+			ex.cleanupPods(namespace),
 		)
 	})
 }
 
-func (in *Executor) executeStartupKube(policy *apis.StandSchedulePolicy) error {
-	namespaces, err := in.fetchNamespaces(policy.Spec.TargetNamespaceFilter, false)
+func (ex *Executor) executeStartupKube(policy *apis.StandSchedulePolicy) error {
+	namespaces, err := ex.fetchNamespaces(policy.Spec.TargetNamespaceFilter, false)
 	if err != nil {
 		return err
 	}
 
 	return util.ForEachE(namespaces, func(_ int, namespace string) error {
 		return multierr.Combine(
-			in.deleteResourceQuota(namespace),
-			in.scaleUpApps(namespace),
+			ex.deleteResourceQuota(namespace),
+			ex.scaleUpApps(namespace),
 		)
 	})
 }
 
-func (in *Executor) createResourceQuota(namespace string, policy *apis.StandSchedulePolicy) error {
-	in.logger.Debug("Create resource quota in namespace",
+func (ex *Executor) createResourceQuota(namespace string, policy *apis.StandSchedulePolicy) error {
+	ex.logger.Debug("Create resource quota in namespace",
 		zap.String("quota", _ResourceQuotaName),
 		zap.String("namespace", namespace))
 
@@ -80,7 +80,7 @@ func (in *Executor) createResourceQuota(namespace string, policy *apis.StandSche
 		},
 	}
 
-	_, err := in.kube.CoreClient().
+	_, err := ex.kube.CoreClient().
 		CoreV1().
 		ResourceQuotas(namespace).
 		Create(context.Background(), quota, meta.CreateOptions{})
@@ -88,10 +88,10 @@ func (in *Executor) createResourceQuota(namespace string, policy *apis.StandSche
 	return kubernetes.IgnoreAlreadyExistsError(err)
 }
 
-func (in *Executor) scaleDownApps(namespace string) error {
-	in.logger.Debug("ScaleDown deployments and statefulSets in namespace", zap.String("namespace", namespace))
+func (ex *Executor) scaleDownApps(namespace string) error {
+	ex.logger.Debug("ScaleDown deployments and statefulSets in namespace", zap.String("namespace", namespace))
 
-	deployments, err := in.lister.Deployments.Deployments(namespace).List(labels.Everything())
+	deployments, err := ex.lister.Deployments.Deployments(namespace).List(labels.Everything())
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,7 @@ func (in *Executor) scaleDownApps(namespace string) error {
 		return d.Spec.Replicas != nil && *d.Spec.Replicas != 0
 	})
 
-	statefulSets, err := in.lister.StatefulSets.StatefulSets(namespace).List(labels.Everything())
+	statefulSets, err := ex.lister.StatefulSets.StatefulSets(namespace).List(labels.Everything())
 	if err != nil {
 		return err
 	}
@@ -112,21 +112,21 @@ func (in *Executor) scaleDownApps(namespace string) error {
 			replicas := *deployment.Spec.Replicas
 			deployment.Spec.Replicas = util.Pointer(int32(0))
 			deployment.ObjectMeta.Annotations[_ReplicasAnnotation] = strconv.Itoa(int(replicas))
-			return in.updateDeployment(deployment)
+			return ex.updateDeployment(deployment)
 		}),
 		util.ForEachE(statefulSets, func(_ int, sts *apps.StatefulSet) error {
 			replicas := *sts.Spec.Replicas
 			sts.Spec.Replicas = util.Pointer(int32(0))
 			sts.ObjectMeta.Annotations[_ReplicasAnnotation] = strconv.Itoa(int(replicas))
-			return in.updateStatefulSet(sts)
+			return ex.updateStatefulSet(sts)
 		}),
 	)
 }
 
-func (in *Executor) cleanupPods(namespace string) error {
-	in.logger.Debug("Delete all existing pods in namespace", zap.String("namespace", namespace))
+func (ex *Executor) cleanupPods(namespace string) error {
+	ex.logger.Debug("Delete all existing pods in namespace", zap.String("namespace", namespace))
 
-	return in.kube.CoreClient().
+	return ex.kube.CoreClient().
 		CoreV1().
 		Pods(namespace).
 		DeleteCollection(
@@ -138,12 +138,12 @@ func (in *Executor) cleanupPods(namespace string) error {
 		)
 }
 
-func (in *Executor) deleteResourceQuota(namespace string) error {
-	in.logger.Debug("Delete resource quota in namespace",
+func (ex *Executor) deleteResourceQuota(namespace string) error {
+	ex.logger.Debug("Delete resource quota in namespace",
 		zap.String("quota", _ResourceQuotaName),
 		zap.String("namespace", namespace))
 
-	err := in.kube.CoreClient().
+	err := ex.kube.CoreClient().
 		CoreV1().
 		ResourceQuotas(namespace).
 		Delete(context.Background(), _ResourceQuotaName, meta.DeleteOptions{})
@@ -151,10 +151,10 @@ func (in *Executor) deleteResourceQuota(namespace string) error {
 	return kubernetes.IgnoreNotFoundError(err)
 }
 
-func (in *Executor) scaleUpApps(namespace string) error {
-	in.logger.Debug("ScaleUp deployments and statefulSets in namespace", zap.String("namespace", namespace))
+func (ex *Executor) scaleUpApps(namespace string) error {
+	ex.logger.Debug("ScaleUp deployments and statefulSets in namespace", zap.String("namespace", namespace))
 
-	deployments, err := in.lister.Deployments.Deployments(namespace).List(labels.Everything())
+	deployments, err := ex.lister.Deployments.Deployments(namespace).List(labels.Everything())
 	if err != nil {
 		return err
 	}
@@ -164,7 +164,7 @@ func (in *Executor) scaleUpApps(namespace string) error {
 		return replicas && scaled
 	})
 
-	statefulSets, err := in.lister.StatefulSets.StatefulSets(namespace).List(labels.Everything())
+	statefulSets, err := ex.lister.StatefulSets.StatefulSets(namespace).List(labels.Everything())
 	if err != nil {
 		return err
 	}
@@ -179,23 +179,23 @@ func (in *Executor) scaleUpApps(namespace string) error {
 			replicas, _ := strconv.Atoi(sts.ObjectMeta.Annotations[_ReplicasAnnotation])
 			sts.Spec.Replicas = util.Pointer(int32(replicas))
 			delete(sts.ObjectMeta.Annotations, _ReplicasAnnotation)
-			return in.updateStatefulSet(sts)
+			return ex.updateStatefulSet(sts)
 		}),
-		in.waitPods(namespace),
+		ex.waitPods(namespace),
 		util.ForEachE(deployments, func(_ int, deployment *apps.Deployment) error {
 			replicas, _ := strconv.Atoi(deployment.ObjectMeta.Annotations[_ReplicasAnnotation])
 			deployment.Spec.Replicas = util.Pointer(int32(replicas))
 			delete(deployment.ObjectMeta.Annotations, _ReplicasAnnotation)
-			return in.updateDeployment(deployment)
+			return ex.updateDeployment(deployment)
 		}),
 	)
 }
 
-func (in *Executor) waitPods(namespace string) error {
+func (ex *Executor) waitPods(namespace string) error {
 	return wait.Poll(_WaitPodsInterval, _WaitPodsTimeout, func() (bool, error) {
-		in.logger.Debug("Wait pods in namespace", zap.String("namespace", namespace))
+		ex.logger.Debug("Wait pods in namespace", zap.String("namespace", namespace))
 
-		podList, err := in.kube.CoreClient().
+		podList, err := ex.kube.CoreClient().
 			CoreV1().
 			Pods(namespace).
 			List(context.Background(), meta.ListOptions{})
@@ -213,26 +213,26 @@ func (in *Executor) waitPods(namespace string) error {
 	})
 }
 
-func (in *Executor) updateDeployment(deployment *apps.Deployment) error {
-	_, err := in.kube.CoreClient().
+func (ex *Executor) updateDeployment(deployment *apps.Deployment) error {
+	_, err := ex.kube.CoreClient().
 		AppsV1().
 		Deployments(deployment.Namespace).
 		Update(context.Background(), deployment, meta.UpdateOptions{})
 	return err
 }
 
-func (in *Executor) updateStatefulSet(sts *apps.StatefulSet) error {
-	_, err := in.kube.CoreClient().
+func (ex *Executor) updateStatefulSet(sts *apps.StatefulSet) error {
+	_, err := ex.kube.CoreClient().
 		AppsV1().
 		StatefulSets(sts.Namespace).
 		Update(context.Background(), sts, meta.UpdateOptions{})
 	return err
 }
 
-func (in *Executor) fetchNamespaces(filter string, reverse bool) ([]string, error) {
-	list, err := in.lister.Namespaces.List(labels.Everything())
+func (ex *Executor) fetchNamespaces(filter string, reverse bool) ([]string, error) {
+	list, err := ex.lister.Namespaces.List(labels.Everything())
 	if err != nil {
-		in.logger.Warn("Failed to list target namespaces", zap.Error(err))
+		ex.logger.Warn("Failed to list target namespaces", zap.Error(err))
 		return nil, err
 	}
 	return SortNamespaces(list, filter, reverse), nil
