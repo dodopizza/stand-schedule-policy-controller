@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -20,6 +21,10 @@ type (
 		scheduleType apis.ConditionScheduleType
 		fireAt       time.Time
 	}
+)
+
+const (
+	_ExecutionTimeout = time.Minute * 10
 )
 
 func (w *WorkItem) String() string {
@@ -68,12 +73,15 @@ func (c *Controller) execute(i interface{}) error {
 		zap.String("policy_name", item.policyName),
 		zap.String("schedule_type", string(item.scheduleType)))
 
+	ctx, cancel := context.WithTimeout(context.Background(), _ExecutionTimeout)
+	defer cancel()
+
 	switch item.scheduleType {
 	case apis.StatusShutdown:
-		err := c.executor.ExecuteShutdown(policy)
+		err := c.executor.ExecuteShutdown(ctx, policy)
 		state.UpdateStatus(item.scheduleType, now, err)
 	case apis.StatusStartup:
-		err := c.executor.ExecuteStartup(policy)
+		err := c.executor.ExecuteStartup(ctx, policy)
 		state.UpdateStatus(item.scheduleType, now, err)
 	default:
 		err = fmt.Errorf("not supported schedule type specified: %s", item.scheduleType)

@@ -1,6 +1,8 @@
 package executor
 
 import (
+	"context"
+
 	"go.uber.org/multierr"
 	"go.uber.org/zap"
 
@@ -27,16 +29,16 @@ func New(l *zap.Logger, az azure.Interface, k kubernetes.Interface, lister *kube
 	}
 }
 
-func (ex *Executor) ExecuteShutdown(policy *apis.StandSchedulePolicy) error {
+func (ex *Executor) ExecuteShutdown(ctx context.Context, policy *apis.StandSchedulePolicy) error {
 	return multierr.Combine(
-		ex.executeShutdownKube(policy),
-		ex.executeShutdownAzure(policy.Spec.Resources.Azure),
+		ex.executeShutdownKube(ctx, policy),
+		ex.executeShutdownAzure(ctx, policy.Spec.Resources.Azure),
 	)
 }
 
-func (ex *Executor) ExecuteStartup(policy *apis.StandSchedulePolicy) error {
+func (ex *Executor) ExecuteStartup(ctx context.Context, policy *apis.StandSchedulePolicy) error {
 	return multierr.Combine(
-		ex.executeStartupAzure(policy.Spec.Resources.Azure),
-		ex.executeStartupKube(policy),
+		ex.executeStartupAzure(ctx, policy.Spec.Resources.Azure),
+		ex.executeStartupKube(ctx, policy),
 	)
 }

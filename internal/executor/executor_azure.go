@@ -12,10 +12,10 @@ import (
 	"github.com/dodopizza/stand-schedule-policy-controller/pkg/util"
 )
 
-func (ex *Executor) executeShutdownAzure(filters apis.AzureResourceList) error {
+func (ex *Executor) executeShutdownAzure(ctx context.Context, filters apis.AzureResourceList) error {
 	sort.Sort(filters)
 
-	resources, err := ex.fetchAzureResources(context.Background(), filters)
+	resources, err := ex.fetchAzureResources(ctx, filters)
 	if err != nil {
 		ex.logger.Warn("Failed to list target azure resources", zap.Error(err))
 		return err
@@ -23,15 +23,15 @@ func (ex *Executor) executeShutdownAzure(filters apis.AzureResourceList) error {
 
 	return util.ForEachE(util.MapKeys(resources), func(_ int, key int64) error {
 		return util.ForEachParallelE(resources[key], func(_ int, resource *azure.Resource) error {
-			return ex.azure.Shutdown(context.Background(), resource, false)
+			return ex.azure.Shutdown(ctx, resource, false)
 		})
 	})
 }
 
-func (ex *Executor) executeStartupAzure(filters apis.AzureResourceList) error {
+func (ex *Executor) executeStartupAzure(ctx context.Context, filters apis.AzureResourceList) error {
 	sort.Sort(sort.Reverse(filters))
 
-	resources, err := ex.fetchAzureResources(context.Background(), filters)
+	resources, err := ex.fetchAzureResources(ctx, filters)
 	if err != nil {
 		ex.logger.Warn("Failed to list target azure resources", zap.Error(err))
 		return err
@@ -39,7 +39,7 @@ func (ex *Executor) executeStartupAzure(filters apis.AzureResourceList) error {
 
 	return util.ForEachE(util.MapKeys(resources), func(_ int, key int64) error {
 		return util.ForEachParallelE(resources[key], func(_ int, resource *azure.Resource) error {
-			return ex.azure.Startup(context.Background(), resource, true)
+			return ex.azure.Startup(ctx, resource, true)
 		})
 	})
 }

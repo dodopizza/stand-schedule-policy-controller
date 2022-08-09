@@ -26,7 +26,7 @@ const (
 	_WaitPodsInterval   = time.Second * 15
 )
 
-func (ex *Executor) executeShutdownKube(policy *apis.StandSchedulePolicy) error {
+func (ex *Executor) executeShutdownKube(ctx context.Context, policy *apis.StandSchedulePolicy) error {
 	namespaces, err := ex.fetchNamespaces(policy.Spec.TargetNamespaceFilter, true)
 	if err != nil {
 		return err
@@ -34,14 +34,14 @@ func (ex *Executor) executeShutdownKube(policy *apis.StandSchedulePolicy) error 
 
 	return util.ForEachE(namespaces, func(_ int, namespace string) error {
 		return multierr.Combine(
-			ex.scaleDownApps(namespace),
-			ex.createResourceQuota(namespace, policy),
-			ex.cleanupPods(namespace),
+			ex.scaleDownApps(ctx, namespace),
+			ex.createResourceQuota(ctx, namespace, policy),
+			ex.cleanupPods(ctx, namespace),
 		)
 	})
 }
 
-func (ex *Executor) executeStartupKube(policy *apis.StandSchedulePolicy) error {
+func (ex *Executor) executeStartupKube(ctx context.Context, policy *apis.StandSchedulePolicy) error {
 	namespaces, err := ex.fetchNamespaces(policy.Spec.TargetNamespaceFilter, false)
 	if err != nil {
 		return err
@@ -49,13 +49,13 @@ func (ex *Executor) executeStartupKube(policy *apis.StandSchedulePolicy) error {
 
 	return util.ForEachE(namespaces, func(_ int, namespace string) error {
 		return multierr.Combine(
-			ex.deleteResourceQuota(namespace),
-			ex.scaleUpApps(namespace),
+			ex.deleteResourceQuota(ctx, namespace),
+			ex.scaleUpApps(ctx, namespace),
 		)
 	})
 }
 
-func (ex *Executor) createResourceQuota(namespace string, policy *apis.StandSchedulePolicy) error {
+func (ex *Executor) createResourceQuota(ctx context.Context, namespace string, policy *apis.StandSchedulePolicy) error {
 	ex.logger.Debug("Create resource quota in namespace",
 		zap.String("quota", _ResourceQuotaName),
 		zap.String("namespace", namespace))
@@ -83,12 +83,12 @@ func (ex *Executor) createResourceQuota(namespace string, policy *apis.StandSche
 	_, err := ex.kube.CoreClient().
 		CoreV1().
 		ResourceQuotas(namespace).
-		Create(context.Background(), quota, meta.CreateOptions{})
+		Create(ctx, quota, meta.CreateOptions{})
 
 	return kubernetes.IgnoreAlreadyExistsError(err)
 }
 
-func (ex *Executor) scaleDownApps(namespace string) error {
+func (ex *Executor) scaleDownApps(ctx context.Context, namespace string) error {
 	ex.logger.Debug("ScaleDown deployments and statefulSets in namespace", zap.String("namespace", namespace))
 
 	deployments, err := ex.lister.Deployments.Deployments(namespace).List(labels.Everything())
@@ -112,25 +112,25 @@ func (ex *Executor) scaleDownApps(namespace string) error {
 			replicas := *deployment.Spec.Replicas
 			deployment.Spec.Replicas = util.Pointer(int32(0))
 			deployment.ObjectMeta.Annotations[_ReplicasAnnotation] = strconv.Itoa(int(replicas))
-			return ex.updateDeployment(deployment)
+			return ex.updateDeployment(ctx, deployment)
 		}),
 		util.ForEachE(statefulSets, func(_ int, sts *apps.StatefulSet) error {
 			replicas := *sts.Spec.Replicas
 			sts.Spec.Replicas = util.Pointer(int32(0))
 			sts.ObjectMeta.Annotations[_ReplicasAnnotation] = strconv.Itoa(int(replicas))
-			return ex.updateStatefulSet(sts)
+			return ex.updateStatefulSet(ctx, sts)
 		}),
 	)
 }
 
-func (ex *Executor) cleanupPods(namespace string) error {
+func (ex *Executor) cleanupPods(ctx context.Context, namespace string) error {
 	ex.logger.Debug("Delete all existing pods in namespace", zap.String("namespace", namespace))
 
 	return ex.kube.CoreClient().
 		CoreV1().
 		Pods(namespace).
 		DeleteCollection(
-			context.Background(),
+			ctx,
 			meta.DeleteOptions{
 				PropagationPolicy: util.Pointer(meta.DeletePropagationBackground),
 			},
@@ -138,7 +138,7 @@ func (ex *Executor) cleanupPods(namespace string) error {
 		)
 }
 
-func (ex *Executor) deleteResourceQuota(namespace string) error {
+func (ex *Executor) deleteResourceQuota(ctx context.Context, namespace string) error {
 	ex.logger.Debug("Delete resource quota in namespace",
 		zap.String("quota", _ResourceQuotaName),
 		zap.String("namespace", namespace))
@@ -146,12 +146,12 @@ func (ex *Executor) deleteResourceQuota(namespace string) error {
 	err := ex.kube.CoreClient().
 		CoreV1().
 		ResourceQuotas(namespace).
-		Delete(context.Background(), _ResourceQuotaName, meta.DeleteOptions{})
+		Delete(ctx, _ResourceQuotaName, meta.DeleteOptions{})
 
 	return kubernetes.IgnoreNotFoundError(err)
 }
 
-func (ex *Executor) scaleUpApps(namespace string) error {
+func (ex *Executor) scaleUpApps(ctx context.Context, namespace string) error {
 	ex.logger.Debug("ScaleUp deployments and statefulSets in namespace", zap.String("namespace", namespace))
 
 	deployments, err := ex.lister.Deployments.Deployments(namespace).List(labels.Everything())
@@ -179,26 +179,26 @@ func (ex *Executor) scaleUpApps(namespace string) error {
 			replicas, _ := strconv.Atoi(sts.ObjectMeta.Annotations[_ReplicasAnnotation])
 			sts.Spec.Replicas = util.Pointer(int32(replicas))
 			delete(sts.ObjectMeta.Annotations, _ReplicasAnnotation)
-			return ex.updateStatefulSet(sts)
+			return ex.updateStatefulSet(ctx, sts)
 		}),
-		ex.waitPods(namespace),
+		ex.waitPods(ctx, namespace),
 		util.ForEachE(deployments, func(_ int, deployment *apps.Deployment) error {
 			replicas, _ := strconv.Atoi(deployment.ObjectMeta.Annotations[_ReplicasAnnotation])
 			deployment.Spec.Replicas = util.Pointer(int32(replicas))
 			delete(deployment.ObjectMeta.Annotations, _ReplicasAnnotation)
-			return ex.updateDeployment(deployment)
+			return ex.updateDeployment(ctx, deployment)
 		}),
 	)
 }
 
-func (ex *Executor) waitPods(namespace string) error {
+func (ex *Executor) waitPods(ctx context.Context, namespace string) error {
 	return wait.Poll(_WaitPodsInterval, _WaitPodsTimeout, func() (bool, error) {
 		ex.logger.Debug("Wait pods in namespace", zap.String("namespace", namespace))
 
 		podList, err := ex.kube.CoreClient().
 			CoreV1().
 			Pods(namespace).
-			List(context.Background(), meta.ListOptions{})
+			List(ctx, meta.ListOptions{})
 		if err != nil {
 			return false, err
 		}
@@ -213,19 +213,19 @@ func (ex *Executor) waitPods(namespace string) error {
 	})
 }
 
-func (ex *Executor) updateDeployment(deployment *apps.Deployment) error {
+func (ex *Executor) updateDeployment(ctx context.Context, deployment *apps.Deployment) error {
 	_, err := ex.kube.CoreClient().
 		AppsV1().
 		Deployments(deployment.Namespace).
-		Update(context.Background(), deployment, meta.UpdateOptions{})
+		Update(ctx, deployment, meta.UpdateOptions{})
 	return err
 }
 
-func (ex *Executor) updateStatefulSet(sts *apps.StatefulSet) error {
+func (ex *Executor) updateStatefulSet(ctx context.Context, sts *apps.StatefulSet) error {
 	_, err := ex.kube.CoreClient().
 		AppsV1().
 		StatefulSets(sts.Namespace).
-		Update(context.Background(), sts, meta.UpdateOptions{})
+		Update(ctx, sts, meta.UpdateOptions{})
 	return err
 }
 
