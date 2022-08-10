@@ -23,14 +23,14 @@ func (f *fixture) WithAzureResources(resources ...*azure.Resource) *fixture {
 }
 
 func (f *fixture) WithStartupFailed(resource *azure.Resource) *fixture {
-	f.azure.startupErrors[f.azure.key(resource)] =
-		fmt.Errorf("shutdown failure for %s", f.azure.key(resource))
+	f.azure.startupErrors[resource.String()] =
+		fmt.Errorf("shutdown failure for %s", resource)
 	return f
 }
 
 func (f *fixture) WithShutdownFailed(resource *azure.Resource) *fixture {
-	f.azure.shutdownErrors[f.azure.key(resource)] =
-		fmt.Errorf("startup failure for %s", f.azure.key(resource))
+	f.azure.shutdownErrors[resource.String()] =
+		fmt.Errorf("startup failure for %s", resource)
 	return f
 }
 
@@ -47,13 +47,9 @@ func (az *azureFixture) List(_ context.Context, resourceType azure.ResourceType,
 }
 
 func (az *azureFixture) Shutdown(_ context.Context, resource *azure.Resource, _ bool) error {
-	return az.shutdownErrors[az.key(resource)]
+	return az.shutdownErrors[resource.String()]
 }
 
 func (az *azureFixture) Startup(_ context.Context, resource *azure.Resource, _ bool) error {
-	return az.startupErrors[az.key(resource)]
-}
-
-func (az *azureFixture) key(resource *azure.Resource) string {
-	return fmt.Sprintf("%s/%s/%s", resource.GetType(), resource.GetResourceGroup(), resource.GetName())
+	return az.startupErrors[resource.String()]
 }

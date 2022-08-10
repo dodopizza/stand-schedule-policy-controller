@@ -2,7 +2,6 @@ package executor
 
 import (
 	"context"
-	"regexp"
 	"sort"
 
 	"go.uber.org/zap"
@@ -13,41 +12,42 @@ import (
 )
 
 func (ex *Executor) executeShutdownAzure(ctx context.Context, filters apis.AzureResourceList) error {
-	sort.Sort(filters)
-
-	resources, err := ex.fetchAzureResources(ctx, filters)
+	resources, err := ex.fetchAzureResources(ctx, filters, false)
 	if err != nil {
 		ex.logger.Warn("Failed to list target azure resources", zap.Error(err))
 		return err
 	}
 
-	return util.ForEachE(util.MapKeys(resources), func(_ int, key int64) error {
-		return util.ForEachParallelE(resources[key], func(_ int, resource *azure.Resource) error {
+	return util.ForEachE(filters, func(_ int, filter apis.AzureResource) error {
+		return util.ForEachParallelE(resources[filter.Priority], func(_ int, resource *azure.Resource) error {
 			return ex.azure.Shutdown(ctx, resource, false)
 		})
 	})
 }
 
 func (ex *Executor) executeStartupAzure(ctx context.Context, filters apis.AzureResourceList) error {
-	sort.Sort(sort.Reverse(filters))
-
-	resources, err := ex.fetchAzureResources(ctx, filters)
+	resources, err := ex.fetchAzureResources(ctx, filters, true)
 	if err != nil {
 		ex.logger.Warn("Failed to list target azure resources", zap.Error(err))
 		return err
 	}
 
-	return util.ForEachE(util.MapKeys(resources), func(_ int, key int64) error {
-		return util.ForEachParallelE(resources[key], func(_ int, resource *azure.Resource) error {
+	return util.ForEachE(filters, func(_ int, filter apis.AzureResource) error {
+		return util.ForEachParallelE(resources[filter.Priority], func(_ int, resource *azure.Resource) error {
 			return ex.azure.Startup(ctx, resource, true)
 		})
 	})
 }
 
-func (ex *Executor) fetchAzureResources(ctx context.Context, filters apis.AzureResourceList) (map[int64][]*azure.Resource, error) {
-	ret := make(map[int64][]*azure.Resource)
+func (ex *Executor) fetchAzureResources(ctx context.Context, filters apis.AzureResourceList, reverse bool) (map[int64][]*azure.Resource, error) {
+	result := make(map[int64][]*azure.Resource)
+	sortFilters := sort.Interface(filters)
+	if reverse {
+		sortFilters = sort.Reverse(sortFilters)
+	}
+	sort.Sort(sortFilters)
 
-	return ret, util.ForEachE(filters, func(_ int, filter apis.AzureResource) error {
+	return result, util.ForEachE(filters, func(_ int, filter apis.AzureResource) error {
 		azureType, err := azure.From(filter.Type)
 		if err != nil {
 			return err
@@ -58,14 +58,7 @@ func (ex *Executor) fetchAzureResources(ctx context.Context, filters apis.AzureR
 			return err
 		}
 
-		for _, resource := range list {
-			match, _ := regexp.MatchString(filter.ResourceNameFilter, resource.GetName())
-
-			if match {
-				ret[filter.Priority] = append(ret[filter.Priority], resource)
-			}
-		}
-
+		MergeAzureResources(result, list, filter)
 		return nil
 	})
 }

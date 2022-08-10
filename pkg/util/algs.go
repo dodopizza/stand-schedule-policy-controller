@@ -30,6 +30,13 @@ func Where[T any](source []T, f func(i int, t T) bool) (ret []T) {
 	return ret
 }
 
+func Project[T any, D any](source []T, f func(i int, t T) D) (ret []D) {
+	for i, t := range source {
+		ret = append(ret, f(i, t))
+	}
+	return ret
+}
+
 func ForEachE[T any](source []T, f func(i int, t T) error) error {
 	var err error
 

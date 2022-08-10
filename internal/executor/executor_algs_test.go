@@ -6,6 +6,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	core "k8s.io/api/core/v1"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"github.com/dodopizza/stand-schedule-policy-controller/internal/azure"
+	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
+	"github.com/dodopizza/stand-schedule-policy-controller/pkg/util"
 )
 
 func Test_SortNamespaces(t *testing.T) {
@@ -51,6 +55,75 @@ func Test_SortNamespaces(t *testing.T) {
 			actual := SortNamespaces(tc.namespaces, tc.filter, tc.reverse)
 
 			assert.Exactly(t, tc.expNamespaces, actual)
+		})
+	}
+}
+
+func Test_MergeAzureResources(t *testing.T) {
+	cases := []struct {
+		name         string
+		resources    []*azure.Resource
+		filter       apis.AzureResource
+		expResources []string
+	}{
+		{
+			name: "filter all",
+			resources: []*azure.Resource{
+				azure.NewResource("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/test/providers/Microsoft.DBforMySQL/servers/test-mysql-aa-suffix"),
+				azure.NewResource("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/test/providers/Microsoft.DBforMySQL/servers/test-mysql-bb-suffix"),
+				azure.NewResource("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/test/providers/Microsoft.DBforMySQL/servers/test-mysql-cc-suffix"),
+				azure.NewResource("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/test/providers/Microsoft.DBforMySQL/servers/test-mysql-dd-suffix"),
+				azure.NewResource("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/test/providers/Microsoft.DBforMySQL/servers/test-mysql-dd-ee-suffix"),
+			},
+			filter: apis.AzureResource{
+				Type:               apis.AzureResourceManagedMySQL,
+				ResourceGroupName:  "test",
+				ResourceNameFilter: "test-mysql-.*-suffix",
+				Priority:           1,
+			},
+			expResources: []string{
+				"Microsoft.DBforMySQL/servers/test/test-mysql-aa-suffix",
+				"Microsoft.DBforMySQL/servers/test/test-mysql-bb-suffix",
+				"Microsoft.DBforMySQL/servers/test/test-mysql-cc-suffix",
+				"Microsoft.DBforMySQL/servers/test/test-mysql-dd-suffix",
+				"Microsoft.DBforMySQL/servers/test/test-mysql-dd-ee-suffix",
+			},
+		},
+		{
+			name: "exclude some",
+			resources: []*azure.Resource{
+				azure.NewResource("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/test/providers/Microsoft.DBforMySQL/servers/test-mysql-aa-suffix"),
+				azure.NewResource("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/test/providers/Microsoft.DBforMySQL/servers/test-mysql-bb-suffix"),
+				azure.NewResource("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/test/providers/Microsoft.DBforMySQL/servers/test-mysql-cc-suffix"),
+				azure.NewResource("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/test/providers/Microsoft.DBforMySQL/servers/test-mysql-dd-suffix"),
+				azure.NewResource("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/test/providers/Microsoft.DBforMySQL/servers/test-mysql-dd-ee-suffix"),
+			},
+			filter: apis.AzureResource{
+				Type:               apis.AzureResourceManagedMySQL,
+				ResourceGroupName:  "test",
+				ResourceNameFilter: "test-mysql-([^dd]*)-suffix",
+				Priority:           1,
+			},
+			expResources: []string{
+				"Microsoft.DBforMySQL/servers/test/test-mysql-aa-suffix",
+				"Microsoft.DBforMySQL/servers/test/test-mysql-bb-suffix",
+				"Microsoft.DBforMySQL/servers/test/test-mysql-cc-suffix",
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		tc := tc
+
+		t.Run(tc.name, func(t *testing.T) {
+			result := make(map[int64][]*azure.Resource)
+			MergeAzureResources(result, tc.resources, tc.filter)
+			actual := util.Project(result[tc.filter.Priority],
+				func(_ int, r *azure.Resource) string {
+					return r.String()
+				})
+
+			assert.Exactly(t, tc.expResources, actual)
 		})
 	}
 }

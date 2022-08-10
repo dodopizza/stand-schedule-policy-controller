@@ -1,6 +1,8 @@
 package azure
 
 import (
+	"fmt"
+
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/arm"
 
 	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
@@ -37,6 +39,10 @@ func (r Resource) GetName() string {
 
 func (r Resource) GetResourceGroup() string {
 	return r.id.ResourceGroupName
+}
+
+func (r Resource) String() string {
+	return fmt.Sprintf("%s/%s/%s", r.GetType(), r.GetResourceGroup(), r.GetName())
 }
 
 func From(api apis.AzureResourceType) (ResourceType, error) {
