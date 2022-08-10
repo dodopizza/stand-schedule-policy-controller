@@ -18,8 +18,10 @@ func (ex *Executor) executeShutdownAzure(ctx context.Context, filters apis.Azure
 		return err
 	}
 
+	ex.logger.Debug("Shutdown azure resources")
 	return util.ForEachE(filters, func(_ int, filter apis.AzureResource) error {
 		return util.ForEachParallelE(resources[filter.Priority], func(_ int, resource *azure.Resource) error {
+			ex.logger.Debug("Shutdown azure resource", zap.Stringer("resource", resource))
 			return ex.azure.Shutdown(ctx, resource, false)
 		})
 	})
@@ -32,8 +34,10 @@ func (ex *Executor) executeStartupAzure(ctx context.Context, filters apis.AzureR
 		return err
 	}
 
+	ex.logger.Debug("Startup azure resources")
 	return util.ForEachE(filters, func(_ int, filter apis.AzureResource) error {
 		return util.ForEachParallelE(resources[filter.Priority], func(_ int, resource *azure.Resource) error {
+			ex.logger.Debug("Startup azure resource", zap.Stringer("resource", resource))
 			return ex.azure.Startup(ctx, resource, true)
 		})
 	})
