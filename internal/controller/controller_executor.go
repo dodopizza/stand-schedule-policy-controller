@@ -88,12 +88,15 @@ func (c *Controller) execute(i interface{}) error {
 	}
 
 	if err != nil {
-		c.logger.Error("Failed to execute schedule of policy",
+		c.logger.Error("Failed to execute schedule of policy with error",
 			zap.String("policy_name", item.policyName),
 			zap.String("schedule_type", string(item.scheduleType)),
 			zap.Error(err))
 		return err
 	}
 
+	c.logger.Info("Executed schedule of policy",
+		zap.String("policy_name", item.policyName),
+		zap.String("schedule_type", string(item.scheduleType)))
 	return nil
 }
