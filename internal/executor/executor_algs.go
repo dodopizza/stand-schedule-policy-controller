@@ -1,8 +1,9 @@
 package executor
 
 import (
-	"regexp"
 	"strings"
+
+	"github.com/dlclark/regexp2"
 
 	core "k8s.io/api/core/v1"
 
@@ -26,8 +27,14 @@ func SortNamespaces(
 	}
 
 	for _, f := range filters {
+		reg, err := regexp2.Compile(f, regexp2.None)
+
+		if err != nil {
+			continue
+		}
+
 		for _, namespace := range objects {
-			matched, _ := regexp.MatchString(f, namespace.Name)
+			matched, _ := reg.MatchString(namespace.Name)
 
 			if matched {
 				namespaces = append(namespaces, namespace.Name)
@@ -38,13 +45,19 @@ func SortNamespaces(
 	return namespaces
 }
 
-func MergeAzureResources(
+func FilterAndMergeAzureResources(
 	result map[int64][]*azure.Resource,
 	list []*azure.Resource,
 	filter apis.AzureResource,
 ) {
+	reg, err := regexp2.Compile(filter.ResourceNameFilter, regexp2.None)
+
+	if err != nil {
+		return
+	}
+
 	for _, resource := range list {
-		match, _ := regexp.MatchString(filter.ResourceNameFilter, resource.GetName())
+		match, _ := reg.MatchString(resource.GetName())
 
 		if match {
 			result[filter.Priority] = append(result[filter.Priority], resource)

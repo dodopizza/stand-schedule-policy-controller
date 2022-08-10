@@ -59,7 +59,7 @@ func Test_SortNamespaces(t *testing.T) {
 	}
 }
 
-func Test_MergeAzureResources(t *testing.T) {
+func Test_FilterAndMergeAzureResources(t *testing.T) {
 	cases := []struct {
 		name         string
 		resources    []*azure.Resource
@@ -92,22 +92,22 @@ func Test_MergeAzureResources(t *testing.T) {
 		{
 			name: "exclude some",
 			resources: []*azure.Resource{
-				azure.NewResource("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/test/providers/Microsoft.DBforMySQL/servers/test-mysql-aa-suffix"),
-				azure.NewResource("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/test/providers/Microsoft.DBforMySQL/servers/test-mysql-bb-suffix"),
-				azure.NewResource("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/test/providers/Microsoft.DBforMySQL/servers/test-mysql-cc-suffix"),
-				azure.NewResource("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/test/providers/Microsoft.DBforMySQL/servers/test-mysql-dd-suffix"),
-				azure.NewResource("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/test/providers/Microsoft.DBforMySQL/servers/test-mysql-dd-ee-suffix"),
+				azure.NewResource("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/test/providers/Microsoft.DBforMySQL/servers/test-mysql-ama-suffix"),
+				azure.NewResource("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/test/providers/Microsoft.DBforMySQL/servers/test-mysql-bob-suffix"),
+				azure.NewResource("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/test/providers/Microsoft.DBforMySQL/servers/test-mysql-clc-suffix"),
+				azure.NewResource("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/test/providers/Microsoft.DBforMySQL/servers/test-mysql-monolith-suffix"),
+				azure.NewResource("/subscriptions/11111111-2222-3333-4444-555555555555/resourceGroups/test/providers/Microsoft.DBforMySQL/servers/test-mysql-monolith-ee-suffix"),
 			},
 			filter: apis.AzureResource{
 				Type:               apis.AzureResourceManagedMySQL,
 				ResourceGroupName:  "test",
-				ResourceNameFilter: "test-mysql-([^dd]*)-suffix",
+				ResourceNameFilter: "test-mysql-(((?!monolith).)*)-suffix",
 				Priority:           1,
 			},
 			expResources: []string{
-				"Microsoft.DBforMySQL/servers/test/test-mysql-aa-suffix",
-				"Microsoft.DBforMySQL/servers/test/test-mysql-bb-suffix",
-				"Microsoft.DBforMySQL/servers/test/test-mysql-cc-suffix",
+				"Microsoft.DBforMySQL/servers/test/test-mysql-ama-suffix",
+				"Microsoft.DBforMySQL/servers/test/test-mysql-bob-suffix",
+				"Microsoft.DBforMySQL/servers/test/test-mysql-clc-suffix",
 			},
 		},
 	}
@@ -117,7 +117,7 @@ func Test_MergeAzureResources(t *testing.T) {
 
 		t.Run(tc.name, func(t *testing.T) {
 			result := make(map[int64][]*azure.Resource)
-			MergeAzureResources(result, tc.resources, tc.filter)
+			FilterAndMergeAzureResources(result, tc.resources, tc.filter)
 			actual := util.Project(result[tc.filter.Priority],
 				func(_ int, r *azure.Resource) string {
 					return r.String()

@@ -62,7 +62,12 @@ func (ex *Executor) fetchAzureResources(ctx context.Context, filters apis.AzureR
 			return err
 		}
 
-		MergeAzureResources(result, list, filter)
+		names := util.Project(list, func(_ int, r *azure.Resource) string {
+			return r.String()
+		})
+		ex.logger.Debug("Retrieved resources", zap.Strings("resources", names))
+
+		FilterAndMergeAzureResources(result, list, filter)
 		return nil
 	})
 }
