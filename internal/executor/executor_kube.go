@@ -85,7 +85,7 @@ func (ex *Executor) createResourceQuota(ctx context.Context, namespace string, p
 		ResourceQuotas(namespace).
 		Create(ctx, quota, meta.CreateOptions{})
 
-	return kubernetes.IgnoreAlreadyExistsError(err)
+	return kubernetes.IgnoreAlreadyExists(err)
 }
 
 func (ex *Executor) scaleDownApps(ctx context.Context, namespace string) error {
@@ -156,7 +156,7 @@ func (ex *Executor) deleteResourceQuota(ctx context.Context, namespace string) e
 		ResourceQuotas(namespace).
 		Delete(ctx, _ResourceQuotaName, meta.DeleteOptions{})
 
-	return kubernetes.IgnoreNotFoundError(err)
+	return kubernetes.IgnoreNotFound(err)
 }
 
 func (ex *Executor) scaleUpApps(ctx context.Context, namespace string) error {

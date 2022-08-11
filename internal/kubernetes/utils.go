@@ -4,11 +4,11 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 )
 
-func IgnoreNotFoundError(err error) error {
+func IgnoreNotFound(err error) error {
 	return IgnoreError(err, errors.IsNotFound)
 }
 
-func IgnoreAlreadyExistsError(err error) error {
+func IgnoreAlreadyExists(err error) error {
 	return IgnoreError(err, errors.IsAlreadyExists)
 }
 
