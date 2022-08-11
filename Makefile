@@ -84,6 +84,7 @@ test-integration-setup: ## Setup environment for integration tests
 	kubectl apply \
 	--kubeconfig "${INTEGRATION_TEST_KIND_CLUSTER_CONFIG}" \
 	--filename "${INTEGRATION_TEST_CRDS}"
+	sleep 20s
 
 .PHONY: test-integration-cleanup
 test-integration-cleanup: ## Cleanup environment for integration tests
@@ -94,7 +95,7 @@ test-integration-cleanup: ## Cleanup environment for integration tests
 test-integration: ## Run all integration tests
 	TEST_KUBECONFIG_PATH="${INTEGRATION_TEST_KIND_CLUSTER_CONFIG}" go test \
 	-v \
-	-timeout 300s \
+	-timeout 600s \
 	--tags=integration \
 	-parallel 1 \
 	./test/...
