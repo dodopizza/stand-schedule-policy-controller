@@ -9,6 +9,7 @@ DOCKER_IMAGE_COMMIT_SHA=$(shell git show -s --format=%h)
 DOCKER_IMAGE_REPO = dodoreg.azurecr.io/${PROJECT_NAME}
 CONTROLLER_GEN=${GOPATH}/bin/controller-gen
 CONTROLLER_GEN_REQ_VERSION := v0.9.1-0.20220629131006-1878064c4cdf
+PLUGIN_GIT_TAG := $(shell git tag -l --sort=-creatordate | head -n 1)
 
 BUILD_OS := $(shell uname | sed 's/./\L&/g')
 BUILD_ARCH := $(shell uname -m)
@@ -107,6 +108,16 @@ run-docker: build-docker ## Run controller in docker
 	@docker run \
 	-it \
 	--rm "${DOCKER_IMAGE_REPO}:${DOCKER_IMAGE_COMMIT_SHA}"
+
+.PHONY: plugin-template
+plugin-template: ## Build krew spec for plugin based on .krew.yaml
+	docker run \
+		--rm \
+		-v ${CURRENT_DIR}/.krew.yaml:/tmp/template-file.yaml \
+		rajatjindal/krew-release-bot:v0.0.43 \
+		krew-release-bot template \
+		--tag "${PLUGIN_GIT_TAG}" \
+		--template-file /tmp/template-file.yaml
 
 .PHONY: help
 help: ## Shows the available commands
