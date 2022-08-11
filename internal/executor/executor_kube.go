@@ -112,14 +112,20 @@ func (ex *Executor) scaleDownApps(ctx context.Context, namespace string) error {
 			replicas := *deployment.Spec.Replicas
 			deployment.Spec.Replicas = util.Pointer(int32(0))
 			deployment.ObjectMeta.Annotations[_ReplicasAnnotation] = strconv.Itoa(int(replicas))
-			ex.logger.Debug("ScaleDown deployment", zap.String("deployment", deployment.Name))
+
+			ex.logger.Debug("ScaleDown deployment in namespace",
+				zap.String("namespace", namespace),
+				zap.String("deployment", deployment.Name))
 			return ex.updateDeployment(ctx, deployment)
 		}),
 		util.ForEachE(statefulSets, func(_ int, sts *apps.StatefulSet) error {
 			replicas := *sts.Spec.Replicas
 			sts.Spec.Replicas = util.Pointer(int32(0))
 			sts.ObjectMeta.Annotations[_ReplicasAnnotation] = strconv.Itoa(int(replicas))
-			ex.logger.Debug("ScaleDown statefulset", zap.String("statefulset", sts.Name))
+
+			ex.logger.Debug("ScaleDown statefulset in namespace",
+				zap.String("namespace", namespace),
+				zap.String("statefulset", sts.Name))
 			return ex.updateStatefulSet(ctx, sts)
 		}),
 	)
@@ -181,40 +187,54 @@ func (ex *Executor) scaleUpApps(ctx context.Context, namespace string) error {
 			replicas, _ := strconv.Atoi(sts.ObjectMeta.Annotations[_ReplicasAnnotation])
 			sts.Spec.Replicas = util.Pointer(int32(replicas))
 			delete(sts.ObjectMeta.Annotations, _ReplicasAnnotation)
-			ex.logger.Debug("ScaleUp statefulset", zap.String("statefulset", sts.Name))
+
+			ex.logger.Debug("ScaleUp statefulset in namespace",
+				zap.String("namespace", namespace),
+				zap.String("statefulset", sts.Name))
 			return ex.updateStatefulSet(ctx, sts)
 		}),
-		ex.waitPods(ctx, namespace),
+		ex.waitPendingPods(ctx, namespace),
 		util.ForEachE(deployments, func(_ int, deployment *apps.Deployment) error {
 			replicas, _ := strconv.Atoi(deployment.ObjectMeta.Annotations[_ReplicasAnnotation])
 			deployment.Spec.Replicas = util.Pointer(int32(replicas))
 			delete(deployment.ObjectMeta.Annotations, _ReplicasAnnotation)
-			ex.logger.Debug("ScaleUp deployment", zap.String("deployment", deployment.Name))
+
+			ex.logger.Debug("ScaleUp deployment in namespace",
+				zap.String("namespace", namespace),
+				zap.String("deployment", deployment.Name))
 			return ex.updateDeployment(ctx, deployment)
 		}),
+		ex.waitPendingPods(ctx, namespace),
 	)
 }
 
-func (ex *Executor) waitPods(ctx context.Context, namespace string) error {
-	return wait.Poll(_WaitPodsInterval, _WaitPodsTimeout, func() (bool, error) {
+func (ex *Executor) waitPendingPods(ctx context.Context, namespace string) error {
+	err := wait.Poll(_WaitPodsInterval, _WaitPodsTimeout, func() (bool, error) {
 		ex.logger.Debug("Wait pods in namespace", zap.String("namespace", namespace))
 
-		podList, err := ex.kube.CoreClient().
-			CoreV1().
-			Pods(namespace).
-			List(ctx, meta.ListOptions{})
-		if err != nil {
+		podList, err := ex.listPods(ctx, namespace)
+		if err != nil || podList == nil {
 			return false, err
 		}
 
 		for _, pod := range podList.Items {
 			if pod.Status.Phase == core.PodPending {
-				return false, err
+				return false, nil
 			}
 		}
 
 		return true, nil
 	})
+
+	return util.IgnoreMatchedError(err, context.DeadlineExceeded)
+}
+
+func (ex *Executor) listPods(ctx context.Context, namespace string) (*core.PodList, error) {
+	list, err := ex.kube.CoreClient().
+		CoreV1().
+		Pods(namespace).
+		List(ctx, meta.ListOptions{})
+	return list, kubernetes.IgnoreTimeout(err)
 }
 
 func (ex *Executor) updateDeployment(ctx context.Context, deployment *apps.Deployment) error {

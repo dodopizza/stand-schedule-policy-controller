@@ -24,7 +24,8 @@ type (
 )
 
 const (
-	_ExecutionTimeout = time.Minute * 10
+	_ExecutionTimeout = time.Minute * 15
+	_DeadlineTimeout  = time.Minute * 31
 )
 
 func (w *WorkItem) String() string {
@@ -32,8 +33,7 @@ func (w *WorkItem) String() string {
 }
 
 func (w *WorkItem) deadline() time.Time {
-	timeout := time.Minute * 30
-	return w.fireAt.Add(timeout)
+	return w.fireAt.Add(_DeadlineTimeout)
 }
 
 func (c *Controller) execute(i interface{}) error {
