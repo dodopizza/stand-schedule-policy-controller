@@ -25,7 +25,7 @@ func Test_GetExecutedTime(t *testing.T) {
 }
 
 func Test_GetNextExecutionTime(t *testing.T) {
-	ts := time.Now().Round(time.Minute)
+	ts := time.Now().UTC().Round(time.Minute)
 	schedule, err := NewSchedule(apis.CronSchedule{Cron: "* * * * *"})
 	if err != nil {
 		t.Fatal(err)
