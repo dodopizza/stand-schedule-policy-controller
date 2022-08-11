@@ -2,6 +2,7 @@ package kubernetes
 
 import (
 	"k8s.io/apimachinery/pkg/api/errors"
+	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func IgnoreNotFound(err error) error {
@@ -21,4 +22,19 @@ func IgnoreError(err error, handler func(error) bool) error {
 		return nil
 	}
 	return err
+}
+
+func SetAnnotation(m meta.ObjectMeta, name, val string) {
+	if m.Annotations == nil {
+		m.Annotations = make(map[string]string)
+	}
+	m.Annotations[name] = val
+}
+
+func GetAnnotation(m meta.ObjectMeta, name string) (string, bool) {
+	if m.Annotations == nil {
+		m.Annotations = make(map[string]string)
+	}
+	val, ok := m.Annotations[name]
+	return val, ok
 }

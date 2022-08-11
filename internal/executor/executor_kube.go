@@ -112,7 +112,7 @@ func (ex *Executor) scaleDownApps(ctx context.Context, namespace string) error {
 		util.ForEachE(deployments, func(_ int, deployment *apps.Deployment) error {
 			replicas := *deployment.Spec.Replicas
 			deployment.Spec.Replicas = util.Pointer(int32(0))
-			deployment.ObjectMeta.Annotations[_ReplicasAnnotation] = strconv.Itoa(int(replicas))
+			kubernetes.SetAnnotation(deployment.ObjectMeta, _ReplicasAnnotation, strconv.Itoa(int(replicas)))
 
 			ex.logger.Debug("ScaleDown deployment in namespace",
 				zap.String("namespace", namespace),
@@ -122,7 +122,7 @@ func (ex *Executor) scaleDownApps(ctx context.Context, namespace string) error {
 		util.ForEachE(statefulSets, func(_ int, sts *apps.StatefulSet) error {
 			replicas := *sts.Spec.Replicas
 			sts.Spec.Replicas = util.Pointer(int32(0))
-			sts.ObjectMeta.Annotations[_ReplicasAnnotation] = strconv.Itoa(int(replicas))
+			kubernetes.SetAnnotation(sts.ObjectMeta, _ReplicasAnnotation, strconv.Itoa(int(replicas)))
 
 			ex.logger.Debug("ScaleDown statefulset in namespace",
 				zap.String("namespace", namespace),
@@ -179,7 +179,8 @@ func (ex *Executor) scaleUpApps(ctx context.Context, namespace string) error {
 
 	return multierr.Combine(
 		util.ForEachE(statefulSets, func(_ int, sts *apps.StatefulSet) error {
-			replicas, _ := strconv.Atoi(sts.ObjectMeta.Annotations[_ReplicasAnnotation])
+			val, _ := kubernetes.GetAnnotation(sts.ObjectMeta, _ReplicasAnnotation)
+			replicas, _ := strconv.Atoi(val)
 			sts.Spec.Replicas = util.Pointer(int32(replicas))
 			delete(sts.ObjectMeta.Annotations, _ReplicasAnnotation)
 
@@ -190,7 +191,8 @@ func (ex *Executor) scaleUpApps(ctx context.Context, namespace string) error {
 		}),
 		ex.waitPendingPods(ctx, namespace),
 		util.ForEachE(deployments, func(_ int, deployment *apps.Deployment) error {
-			replicas, _ := strconv.Atoi(deployment.ObjectMeta.Annotations[_ReplicasAnnotation])
+			val, _ := kubernetes.GetAnnotation(deployment.ObjectMeta, _ReplicasAnnotation)
+			replicas, _ := strconv.Atoi(val)
 			deployment.Spec.Replicas = util.Pointer(int32(replicas))
 			delete(deployment.ObjectMeta.Annotations, _ReplicasAnnotation)
 
