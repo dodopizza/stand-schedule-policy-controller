@@ -5,7 +5,7 @@ metadata:
 spec:
   homepage: https://github.com/dodopizza/stand-schedule-policy-controller
   shortDescription: Startup or shutdown command stand and associated resources
-  version: {{ .TagName }}
+  version: v{{ .TagName }}
   description: |
     Plugin for starting up or shutting down Kubernetes applications located in dedicated namespace 
     and associated cloud resources. This plugin override startup or shutdown time for corresponding StandSchedulePolicy object
@@ -17,8 +17,6 @@ spec:
       files:
         - from: kubectl-stand
           to: .
-        - from: LICENSE
-          to: .
       selector:
         matchLabels:
           os: darwin
@@ -27,8 +25,6 @@ spec:
       bin: kubectl-stand
       files:
         - from: kubectl-stand
-          to: .
-        - from: LICENSE
           to: .
       selector:
         matchLabels:
@@ -39,8 +35,6 @@ spec:
       files:
         - from: kubectl-stand
           to: .
-        - from: LICENSE
-          to: .
       selector:
         matchLabels:
           os: linux
@@ -50,8 +44,6 @@ spec:
       files:
         - from: kubectl-stand
           to: .
-        - from: LICENSE
-          to: .
       selector:
         matchLabels:
           os: linux
@@ -60,8 +52,6 @@ spec:
       bin: kubectl-stand.exe
       files:
         - from: kubectl-stand.exe
-          to: .
-        - from: LICENSE
           to: .
       selector:
         matchLabels:
