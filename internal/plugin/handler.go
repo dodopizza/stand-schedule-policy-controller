@@ -73,7 +73,7 @@ func (h *Handler) Run() error {
 
 	current := time.Now().UTC()
 	override := current.Add(time.Second * 30).Round(time.Minute)
-	fmt.Printf("Policy %s execution time will be at: %s\n", policy.Name, override)
+	fmt.Printf("Policy \"%s\" will be executed at: %s\n", policy.Name, override)
 
 	schedule := policy.Spec.GetSchedule(h.Type)
 	schedule.Override = override.Format(time.RFC3339)
@@ -83,9 +83,9 @@ func (h *Handler) Run() error {
 		StandSchedulePolicies().
 		Update(context.Background(), policy, meta.UpdateOptions{})
 	if err != nil {
-		fmt.Printf("Failed to update sspol %s definiton\n", policy.Name)
+		fmt.Printf("Failed to update policy \"%s\" definiton\n", policy.Name)
 	}
-	fmt.Printf("Policy %s definition updated\n", policy.Name)
+	fmt.Printf("Policy \"%s\" definition updated\n", policy.Name)
 
 	if h.Wait {
 		fmt.Printf("Waiting to completion: ")
@@ -105,6 +105,11 @@ func (h *Handler) WaitPolicyReady() (bool, error) {
 
 	status := policy.Status.GetScheduleStatus(h.Type)
 	statusCompleted := status.Status == string(apis.ConditionCompleted) || status.Status == string(apis.ConditionFailed)
+
+	if statusCompleted {
+		fmt.Printf("\nDone\n")
+	}
+
 	return statusCompleted, nil
 }
 
