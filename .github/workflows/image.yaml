@@ -43,7 +43,6 @@ jobs:
         with:
           version: v1.46.2
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          args: "--fix=false --timeout=10m"
 
       - name: Tidy
         run: make tidy
