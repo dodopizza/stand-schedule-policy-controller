@@ -12,6 +12,7 @@
 *.out
 
 **/bin/*
+**/dist/*
 
 .idea/
 

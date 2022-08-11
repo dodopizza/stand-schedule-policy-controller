@@ -1,0 +1,49 @@
+---
+project_name: kubectl-stand
+
+builds:
+  - binary: kubectl-stand
+    id: general
+    main: ./cmd/plugin
+    ldflags:
+      - -s -w -X 'github.com/dodopizza/stand-schedule-policy-controller/internal/plugin.Version=v{{ .Version }}'
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - name_template: '{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}'
+    replacements:
+      darwin: Darwin
+      linux: Linux
+      windows: Windows
+      amd64: x86_64
+    format_overrides:
+      - goos: windows
+        format: zip
+
+checksum:
+  name_template: '{{ .ProjectName }}_checksums.txt'
+
+snapshot:
+  name_template: "{{ .Commit }}"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - typo
+      - static check
+      - lint
+      - format
+      - tidy
+
+release:
+  name_template: "{{ .ProjectName }}-v{{ .Version }}"
+  prerelease: auto
