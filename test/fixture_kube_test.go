@@ -10,8 +10,14 @@ import (
 	core "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 
 	apis "github.com/dodopizza/stand-schedule-policy-controller/pkg/apis/standschedules/v1"
+)
+
+const (
+	_WaitPolicyStatusInterval = time.Second * 5
+	_WaitPolicyStatusTimeout  = time.Minute * 3
 )
 
 func (f *fixture) WithNamespaces(namespaces ...string) *fixture {
@@ -98,34 +104,27 @@ func (f *fixture) WithPolicies(policies ...*apis.StandSchedulePolicy) *fixture {
 }
 
 func (f *fixture) WaitUntilPolicyStatus(name string, ct apis.ConditionType, sht apis.ConditionScheduleType) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Minute*3)
-	defer cancel()
+	err := wait.PollImmediate(_WaitPolicyStatusInterval, _WaitPolicyStatusTimeout, func() (bool, error) {
+		f.t.Logf("Waiting policy (%s) status for %s to %s", name, sht, ct)
+		policy, err := f.kube.StandSchedulesClient().
+			StandSchedulesV1().
+			StandSchedulePolicies().
+			Get(context.Background(), name, meta.GetOptions{})
 
-	ticker := time.NewTicker(time.Second * 5)
-	defer ticker.Stop()
+		if err != nil {
+			return false, err
+		}
 
-	for {
-		select {
-		case <-ctx.Done():
-			f.t.Errorf("Deadline waiting status exceeded")
-			return
-
-		case <-ticker.C:
-			f.t.Logf("Waiting policy (%s) status for %s to %s", name, sht, ct)
-			policy, err := f.kube.StandSchedulesClient().
-				StandSchedulesV1().
-				StandSchedulePolicies().
-				Get(ctx, name, meta.GetOptions{})
-
-			if err != nil {
-				f.t.Error(err)
-			}
-
-			for _, status := range policy.Status.Conditions {
-				if status.Type == ct && status.Status == sht {
-					return
-				}
+		for _, status := range policy.Status.Conditions {
+			if status.Type == ct && status.Status == sht {
+				return true, nil
 			}
 		}
+
+		return false, nil
+	})
+
+	if err != nil {
+		f.t.Error(err)
 	}
 }

@@ -27,6 +27,8 @@ func podObject(namespace, name string) *core.Pod {
 					Image: "nginx",
 				},
 			},
+			AutomountServiceAccountToken:  util.Pointer(false),
+			TerminationGracePeriodSeconds: util.Pointer(int64(1)),
 		},
 	}
 }
@@ -57,6 +59,8 @@ func deploymentObject(namespace, name string) *apps.Deployment {
 							Image: "nginx",
 						},
 					},
+					AutomountServiceAccountToken:  util.Pointer(false),
+					TerminationGracePeriodSeconds: util.Pointer(int64(1)),
 				},
 			},
 		},
