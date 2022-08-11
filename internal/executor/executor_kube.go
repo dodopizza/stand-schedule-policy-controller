@@ -36,7 +36,8 @@ func (ex *Executor) executeShutdownKube(ctx context.Context, policy *apis.StandS
 		return multierr.Combine(
 			ex.scaleDownApps(ctx, namespace),
 			ex.createResourceQuota(ctx, namespace, policy),
-			ex.cleanupPods(ctx, namespace),
+			ex.deleteExistingPods(ctx, namespace),
+			ex.waitTerminatingPods(ctx, namespace),
 		)
 	})
 }
@@ -131,19 +132,13 @@ func (ex *Executor) scaleDownApps(ctx context.Context, namespace string) error {
 	)
 }
 
-func (ex *Executor) cleanupPods(ctx context.Context, namespace string) error {
+func (ex *Executor) deleteExistingPods(ctx context.Context, namespace string) error {
 	ex.logger.Debug("Delete all existing pods in namespace", zap.String("namespace", namespace))
 
 	return ex.kube.CoreClient().
 		CoreV1().
 		Pods(namespace).
-		DeleteCollection(
-			ctx,
-			meta.DeleteOptions{
-				PropagationPolicy: util.Pointer(meta.DeletePropagationBackground),
-			},
-			meta.ListOptions{},
-		)
+		DeleteCollection(ctx, meta.DeleteOptions{}, meta.ListOptions{})
 }
 
 func (ex *Executor) deleteResourceQuota(ctx context.Context, namespace string) error {
@@ -226,7 +221,30 @@ func (ex *Executor) waitPendingPods(ctx context.Context, namespace string) error
 		return true, nil
 	})
 
-	return util.IgnoreMatchedError(err, context.DeadlineExceeded)
+	return util.IgnoreMatchedError(err, wait.ErrWaitTimeout)
+}
+
+func (ex *Executor) waitTerminatingPods(ctx context.Context, namespace string) error {
+	err := wait.Poll(_WaitPodsInterval, _WaitPodsTimeout, func() (bool, error) {
+		ex.logger.Debug("Wait pods until terminated state in namespace", zap.String("namespace", namespace))
+
+		podList, err := ex.listPods(ctx, namespace)
+		if err != nil || podList == nil {
+			return false, err
+		}
+
+		for _, pod := range podList.Items {
+			for _, cs := range pod.Status.ContainerStatuses {
+				if cs.State.Terminated == nil {
+					return false, nil
+				}
+			}
+		}
+
+		return true, nil
+	})
+
+	return util.IgnoreMatchedError(err, wait.ErrWaitTimeout)
 }
 
 func (ex *Executor) listPods(ctx context.Context, namespace string) (*core.PodList, error) {
