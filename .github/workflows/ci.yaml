@@ -49,12 +49,12 @@ jobs:
       - name: Tidy
         run: make tidy
 
-      - name: Login to DockerHub
+      - name: Login to GitHub CR
         uses: docker/login-action@v2
         with:
-          registry: ${{ secrets.DOCKER_REGISTRY }}
-          username: ${{ secrets.DODOREG_AZURECR_USERNAME }}
-          password: ${{ secrets.DODOREG_AZURECR_PASSWORD }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Unit test
         run: make test-unit
@@ -72,4 +72,4 @@ jobs:
         run: make test-integration
 
       - name: Push
-        run: make push-docker
+        run: make DOCKER_IMAGE_REGISTRY="ghcr.io/dodopizza" push-docker
