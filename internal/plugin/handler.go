@@ -8,6 +8,8 @@ import (
 
 	"github.com/spf13/pflag"
 	meta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/json"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/cli-runtime/pkg/genericclioptions"
 
@@ -25,6 +27,10 @@ type (
 		kube         kubernetes.Interface
 		kubeFlags    *genericclioptions.ConfigFlags
 		handlerFlags *pflag.FlagSet
+	}
+
+	Patch struct {
+		Spec apis.StandSchedulePolicySpec `json:"spec"`
 	}
 )
 
@@ -71,20 +77,25 @@ func (h *Handler) Run() error {
 		return err
 	}
 
-	current := time.Now().UTC()
-	override := current.Add(time.Second * 30).Round(time.Minute)
-	fmt.Printf("Policy \"%s\" will be executed at: %s\n", policy.Name, override)
+	currentTime := time.Now().UTC()
+	overrideTime := currentTime.Add(time.Second * 30).Round(time.Minute)
+	fmt.Printf("Policy \"%s\" will be executed at: %s\n", policy.Name, overrideTime)
 
 	schedule := policy.Spec.GetSchedule(h.Type)
-	schedule.Override = override.Format(time.RFC3339)
+	schedule.Override = overrideTime.Format(time.RFC3339)
+
+	patch := Patch{Spec: policy.Spec}
+	patchBytes, _ := json.Marshal(patch)
 
 	_, err = h.kube.StandSchedulesClient().
 		StandSchedulesV1().
 		StandSchedulePolicies().
-		Update(context.Background(), policy, meta.UpdateOptions{})
+		Patch(context.Background(), policy.Name, types.MergePatchType, patchBytes, meta.PatchOptions{})
 	if err != nil {
 		fmt.Printf("Failed to update policy \"%s\" definiton\n", policy.Name)
+		return err
 	}
+
 	fmt.Printf("Policy \"%s\" definition updated\n", policy.Name)
 
 	if h.Wait {
