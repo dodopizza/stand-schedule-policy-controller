@@ -12,7 +12,7 @@ import (
 	"github.com/dodopizza/stand-schedule-policy-controller/pkg/util"
 )
 
-func SortNamespaces(
+func FilterAndSortNamespaces(
 	objects []*core.Namespace,
 	filter string,
 	reverse bool,
@@ -27,6 +27,10 @@ func SortNamespaces(
 	}
 
 	for _, f := range filters {
+		if f == "" {
+			continue
+		}
+
 		reg, err := regexp2.Compile(f, regexp2.None)
 
 		if err != nil {

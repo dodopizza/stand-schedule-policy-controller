@@ -279,5 +279,5 @@ func (ex *Executor) fetchNamespaces(filter string, reverse bool) ([]string, erro
 		ex.logger.Warn("Failed to list target namespaces", zap.Error(err))
 		return nil, err
 	}
-	return SortNamespaces(list, filter, reverse), nil
+	return FilterAndSortNamespaces(list, filter, reverse), nil
 }

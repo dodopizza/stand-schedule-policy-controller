@@ -52,7 +52,7 @@ func Test_SortNamespaces(t *testing.T) {
 		tc := tc
 
 		t.Run(tc.name, func(t *testing.T) {
-			actual := SortNamespaces(tc.namespaces, tc.filter, tc.reverse)
+			actual := FilterAndSortNamespaces(tc.namespaces, tc.filter, tc.reverse)
 
 			assert.Exactly(t, tc.expNamespaces, actual)
 		})
