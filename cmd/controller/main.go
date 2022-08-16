@@ -21,9 +21,13 @@ func main() {
 func logger() *zap.Logger {
 	cfg := zap.NewProductionConfig()
 	cfg.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
+	cfg.EncoderConfig.TimeKey = "timestamp"
+	cfg.EncoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
+
 	logger, err := cfg.Build()
 	if err != nil {
 		log.Fatalf("Logger error: %v", err)
 	}
+
 	return logger
 }
