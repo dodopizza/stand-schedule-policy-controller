@@ -10,8 +10,10 @@
     "port": 5000
   },
   "controller": {
-    "resync_seconds": 300,
-    "worker_queue_threadiness": 1,
+    "core_resync_seconds": 300,
+    "policies_resync_seconds": 300,
+    "reconciler_threadiness": 1,
+    "executor_threadiness": 1,
     "worker_queue_retries": 5
   }
 }
