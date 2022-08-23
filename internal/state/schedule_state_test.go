@@ -148,6 +148,16 @@ func Test_ScheduleRequiredCron(t *testing.T) {
 	assert.True(t, schedule.ScheduleRequired(completed.Add(time.Second*30)))
 }
 
+func Test_ScheduleRequiredEmpty(t *testing.T) {
+	ts := time.Now().Round(time.Minute)
+	schedule, err := NewSchedule(apis.CronSchedule{Cron: ""})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	assert.False(t, schedule.ScheduleRequired(ts))
+}
+
 func Test_ScheduleRequiredOverride(t *testing.T) {
 	ts := time.Now().Round(time.Minute)
 	schedule, err := NewSchedule(

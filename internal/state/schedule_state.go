@@ -117,9 +117,9 @@ func (ss *ScheduleState) SetFailed(at time.Time) {
 }
 
 func (ss *ScheduleState) ScheduleRequired(current time.Time) bool {
-	// not scheduled at all
+	// not scheduled at all, check if scheduling supported
 	if ss.fireAt.IsZero() {
-		return true
+		return !ss.GetNextExecutionTime(current).IsZero()
 	}
 
 	executed := ss.GetExecutedTime()
