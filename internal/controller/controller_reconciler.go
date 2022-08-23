@@ -17,13 +17,13 @@ func (c *Controller) reconcile(i interface{}) error {
 	policy, err := c.lister.Stands.Get(policyName)
 
 	if errors.IsNotFound(err) {
-		c.logger.Info("Deleted policy with name removed from execution", zap.String("policy_name", policyName))
+		c.logger.Info("Deleted policy removed from execution", zap.String("policy_name", policyName))
 		return nil
 	}
 
 	ps, exists := c.state.Get(policy.Name)
 	if !exists {
-		c.logger.Info("Deleted policy with name removed from execution", zap.String("policy_name", policy.Name))
+		c.logger.Info("Deleted policy removed from execution", zap.String("policy_name", policy.Name))
 		return nil
 	}
 

@@ -8,28 +8,28 @@ import (
 )
 
 func (c *Controller) add(obj *apis.StandSchedulePolicy) {
-	c.logger.Debug("Discovered policy object with name", zap.String("policy_name", obj.Name))
+	c.logger.Debug("Discovered policy object", zap.String("policy_name", obj.Name))
 	ps, err := state.NewPolicyState(&obj.Spec.Schedules)
 	if err != nil {
-		c.logger.Error("Policy object with name has invalid format", zap.String("policy_name", obj.Name), zap.Error(err))
+		c.logger.Error("Policy object has invalid format", zap.String("policy_name", obj.Name), zap.Error(err))
 		return
 	}
 
-	c.logger.Info("Added policy object with name", zap.String("policy_name", obj.Name))
+	c.logger.Info("Added policy object", zap.String("policy_name", obj.Name))
 	c.state.AddOrUpdate(obj.Name, ps)
 	c.enqueueReconcile(obj.Name)
 }
 
 func (c *Controller) update(oldObj, newObj *apis.StandSchedulePolicy) {
-	c.logger.Info("Sync policy object with name", zap.String("policy_name", newObj.Name))
+	c.logger.Info("Sync policy object with", zap.String("policy_name", newObj.Name))
 	oldState, err := state.NewPolicyState(&oldObj.Spec.Schedules)
 	if err != nil {
-		c.logger.Error("Policy object with name has invalid format", zap.String("policy_name", oldObj.Name), zap.Error(err))
+		c.logger.Error("Policy object has invalid format", zap.String("policy_name", oldObj.Name), zap.Error(err))
 		return
 	}
 	newState, err := state.NewPolicyState(&newObj.Spec.Schedules)
 	if err != nil {
-		c.logger.Error("Policy object with name has invalid format", zap.String("policy_name", newObj.Name), zap.Error(err))
+		c.logger.Error("Policy object has invalid format", zap.String("policy_name", newObj.Name), zap.Error(err))
 		return
 	}
 
@@ -41,7 +41,7 @@ func (c *Controller) update(oldObj, newObj *apis.StandSchedulePolicy) {
 }
 
 func (c *Controller) delete(obj *apis.StandSchedulePolicy) {
-	c.logger.Info("Deleted policy object with name", zap.String("policy_name", obj.Name))
+	c.logger.Info("Deleted policy object", zap.String("policy_name", obj.Name))
 	c.state.Delete(obj.Name)
 	c.enqueueReconcile(obj.Name)
 }

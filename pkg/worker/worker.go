@@ -83,16 +83,16 @@ func (w *Worker) next() bool {
 		return true
 	}
 
-	w.logger.Info("Failed to process key with error", zap.Any("key", key), zap.Error(err))
+	w.logger.Info("Failed to process key", zap.Any("key", key), zap.Error(err))
 	runtime.HandleError(err)
 
 	if w.rateLimiter.NumRequeues(key) < w.config.Retries {
-		w.logger.Info("Requeue key with error", zap.Any("key", key), zap.Error(err))
+		w.logger.Info("Requeue key", zap.Any("key", key), zap.Error(err))
 		w.queue.AddAfter(key, w.rateLimiter.When(key))
 		return true
 	}
 
-	w.logger.Info("Forget failed key with error", zap.Any("key", key), zap.Error(err))
+	w.logger.Info("Forget failed key", zap.Any("key", key), zap.Error(err))
 	w.rateLimiter.Forget(key)
 	return true
 }
