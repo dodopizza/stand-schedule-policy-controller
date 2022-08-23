@@ -3,8 +3,10 @@ package main
 import (
 	"log"
 
+	"github.com/go-logr/zapr"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"k8s.io/klog/v2"
 
 	"github.com/dodopizza/stand-schedule-policy-controller/config"
 	"github.com/dodopizza/stand-schedule-policy-controller/internal/app"
@@ -15,12 +17,23 @@ func main() {
 	if err != nil {
 		log.Fatalf("Config error: %s", err)
 	}
-	app.Run(logger(), cfg)
+	app.Run(setupLoggers(), cfg)
 }
 
-func logger() *zap.Logger {
+func setupLoggers() *zap.Logger {
+	// replace klog logging with dedicated zap & set upper verbosity
+	klog.SetLogger(
+		zapr.NewLogger(
+			createLogger(zapcore.WarnLevel),
+		),
+	)
+
+	return createLogger(zapcore.DebugLevel)
+}
+
+func createLogger(lvl zapcore.Level) *zap.Logger {
 	cfg := zap.NewProductionConfig()
-	cfg.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
+	cfg.Level = zap.NewAtomicLevelAt(lvl)
 	cfg.EncoderConfig.TimeKey = "timestamp"
 	cfg.EncoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
 
