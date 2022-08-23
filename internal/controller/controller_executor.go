@@ -95,7 +95,7 @@ func (c *Controller) execute(i interface{}) error {
 		return err
 	}
 
-	c.logger.Info("Executed schedule of policy",
+	c.logger.Info("Complete to execute schedule of policy",
 		zap.String("policy_name", item.policyName),
 		zap.String("schedule_type", string(item.scheduleType)))
 	return nil
