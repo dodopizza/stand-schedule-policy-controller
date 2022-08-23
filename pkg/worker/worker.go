@@ -52,10 +52,12 @@ func (w *Worker) Start(interrupt <-chan struct{}) {
 }
 
 func (w *Worker) Enqueue(item interface{}) {
+	w.logger.Debug("Enqueue key", zap.Any("worker_key", item))
 	w.queue.Add(item)
 }
 
 func (w *Worker) EnqueueAfter(item interface{}, duration time.Duration) {
+	w.logger.Debug("Enqueue key deferred", zap.Any("worker_key", item), zap.Stringer("worker_key_after", duration))
 	w.queue.AddAfter(item, duration)
 }
 
@@ -83,16 +85,16 @@ func (w *Worker) next() bool {
 		return true
 	}
 
-	w.logger.Info("Failed to process key", zap.Any("key", key), zap.Error(err))
+	w.logger.Info("Failed to process key", zap.Any("worker_key", key), zap.Error(err))
 	runtime.HandleError(err)
 
 	if w.rateLimiter.NumRequeues(key) < w.config.Retries {
-		w.logger.Info("Requeue key", zap.Any("key", key), zap.Error(err))
+		w.logger.Info("Requeue key", zap.Any("worker_key", key), zap.Error(err))
 		w.queue.AddAfter(key, w.rateLimiter.When(key))
 		return true
 	}
 
-	w.logger.Info("Forget failed key", zap.Any("key", key), zap.Error(err))
+	w.logger.Info("Forget failed key", zap.Any("worker_key", key), zap.Error(err))
 	w.rateLimiter.Forget(key)
 	return true
 }
