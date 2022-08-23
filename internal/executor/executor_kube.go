@@ -20,10 +20,12 @@ import (
 )
 
 const (
-	_ResourceQuotaName  = "zero-quota"
-	_ReplicasAnnotation = apis.AnnotationPrefix + "/restore-replicas"
-	_WaitPodsTimeout    = time.Second * 180
-	_WaitPodsInterval   = time.Second * 15
+	_ResourceQuotaName          = "zero-quota"
+	_ReplicasAnnotation         = apis.AnnotationPrefix + "/restore-replicas"
+	_WaitStsPodsTimeout         = time.Minute * 3
+	_WaitDeployPodsTimeout      = time.Minute * 1
+	_WaitTerminatingPodsTimeout = time.Minute * 1
+	_WaitPodsInterval           = time.Second * 15
 )
 
 func (ex *Executor) executeShutdownKube(ctx context.Context, policy *apis.StandSchedulePolicy) error {
@@ -37,7 +39,7 @@ func (ex *Executor) executeShutdownKube(ctx context.Context, policy *apis.StandS
 			ex.scaleDownApps(ctx, namespace),
 			ex.createResourceQuota(ctx, namespace, policy),
 			ex.deleteExistingPods(ctx, namespace),
-			ex.waitTerminatingPods(ctx, namespace),
+			ex.waitTerminatingPods(ctx, namespace, _WaitTerminatingPodsTimeout),
 		)
 	})
 }
@@ -189,7 +191,7 @@ func (ex *Executor) scaleUpApps(ctx context.Context, namespace string) error {
 				zap.String("statefulset", sts.Name))
 			return ex.updateStatefulSet(ctx, sts)
 		}),
-		ex.waitPendingPods(ctx, namespace),
+		ex.waitPendingPods(ctx, namespace, len(statefulSets), _WaitStsPodsTimeout),
 		util.ForEachE(deployments, func(_ int, deployment *apps.Deployment) error {
 			val, _ := kubernetes.GetAnnotation(deployment.ObjectMeta, _ReplicasAnnotation)
 			replicas, _ := strconv.Atoi(val)
@@ -201,12 +203,16 @@ func (ex *Executor) scaleUpApps(ctx context.Context, namespace string) error {
 				zap.String("deployment", deployment.Name))
 			return ex.updateDeployment(ctx, deployment)
 		}),
-		ex.waitPendingPods(ctx, namespace),
+		ex.waitPendingPods(ctx, namespace, len(deployments), _WaitDeployPodsTimeout),
 	)
 }
 
-func (ex *Executor) waitPendingPods(ctx context.Context, namespace string) error {
-	err := wait.Poll(_WaitPodsInterval, _WaitPodsTimeout, func() (bool, error) {
+func (ex *Executor) waitPendingPods(ctx context.Context, namespace string, appCount int, timeout time.Duration) error {
+	if appCount == 0 {
+		return nil
+	}
+
+	err := wait.Poll(_WaitPodsInterval, timeout, func() (bool, error) {
 		ex.logger.Debug("Wait pods in namespace", zap.String("namespace", namespace))
 
 		podList, err := ex.listPods(ctx, namespace)
@@ -226,8 +232,8 @@ func (ex *Executor) waitPendingPods(ctx context.Context, namespace string) error
 	return util.IgnoreMatchedError(err, wait.ErrWaitTimeout)
 }
 
-func (ex *Executor) waitTerminatingPods(ctx context.Context, namespace string) error {
-	err := wait.Poll(_WaitPodsInterval, _WaitPodsTimeout, func() (bool, error) {
+func (ex *Executor) waitTerminatingPods(ctx context.Context, namespace string, timeout time.Duration) error {
+	err := wait.Poll(_WaitPodsInterval, timeout, func() (bool, error) {
 		ex.logger.Debug("Wait pods until terminated state in namespace", zap.String("namespace", namespace))
 
 		podList, err := ex.listPods(ctx, namespace)

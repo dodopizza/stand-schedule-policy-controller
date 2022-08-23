@@ -24,8 +24,8 @@ type (
 )
 
 const (
-	_ExecutionTimeout = time.Minute * 15
-	_DeadlineTimeout  = time.Minute * 31
+	_ExecutionTimeout = time.Minute * 20
+	_DeadlineTimeout  = time.Minute * 61
 )
 
 func (w *WorkItem) String() string {
