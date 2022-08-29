@@ -20,13 +20,9 @@ const (
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:path=standschedulepolicies,scope="Cluster",shortName=sspol
-// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
-// +kubebuilder:printcolumn:name="StartupScheduledTime",type="date",JSONPath=".status.startup.scheduledTime"
 // +kubebuilder:printcolumn:name="StartupStatus",type="string",JSONPath=".status.startup.status"
-// +kubebuilder:printcolumn:name="StartupStatusTime",type="date",JSONPath=".status.startup.statusTime"
-// +kubebuilder:printcolumn:name="ShutdownScheduledTime",type="date",JSONPath=".status.shutdown.scheduledTime"
 // +kubebuilder:printcolumn:name="ShutdownStatus",type="string",JSONPath=".status.shutdown.status"
-// +kubebuilder:printcolumn:name="ShutdownStatusTime",type="date",JSONPath=".status.shutdown.statusTime"
+// +kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // StandSchedulePolicy declares policy for stand startup/shutdown schedules
 type StandSchedulePolicy struct {

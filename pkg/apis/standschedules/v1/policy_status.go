@@ -7,6 +7,9 @@ Authored by The Infrastructure Platform Team.
 package v1
 
 import (
+	"fmt"
+	"time"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -57,12 +60,8 @@ type StatusCondition struct {
 }
 
 type ScheduleStatus struct {
-	// ScheduledTime defines time when cron scheduled
-	ScheduledTime metav1.Time `json:"scheduledTime,omitempty"`
 	// Status defines how schedule finished
 	Status string `json:"status,omitempty"`
-	// Status defines when schedule finished
-	StatusTime metav1.Time `json:"statusTime,omitempty"`
 }
 
 func (in *StandSchedulePolicyStatus) GetScheduleStatus(st ConditionScheduleType) *ScheduleStatus {
@@ -86,18 +85,22 @@ func (in *StandSchedulePolicyStatus) UpdateConditions(conditions []StatusConditi
 }
 
 func (in *ScheduleStatus) UpdateFromConditions(st ConditionScheduleType, conditions []StatusCondition) {
+	in.Status = "Disabled"
+
 	for _, condition := range conditions {
 		if condition.Status != st {
 			continue
 		}
 
-		if condition.Type == ConditionScheduled {
-			in.ScheduledTime = condition.LastTransitionTime
-		}
+		t := condition.LastTransitionTime.Format(time.RFC3339)
 
-		if condition.Type == ConditionCompleted || condition.Type == ConditionFailed {
-			in.Status = string(condition.Type)
-			in.StatusTime = condition.LastTransitionTime
+		switch condition.Type {
+		case ConditionScheduled:
+			in.Status = fmt.Sprintf("Scheduled at %s", t)
+		case ConditionFailed:
+			in.Status = fmt.Sprintf("Failed at %s", t)
+		case ConditionCompleted:
+			in.Status = fmt.Sprintf("Completed at %s", t)
 		}
 	}
 }

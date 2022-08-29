@@ -18,26 +18,14 @@ spec:
   scope: Cluster
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .metadata.creationTimestamp
-      name: Age
-      type: date
-    - jsonPath: .status.startup.scheduledTime
-      name: StartupScheduledTime
-      type: date
     - jsonPath: .status.startup.status
       name: StartupStatus
       type: string
-    - jsonPath: .status.startup.statusTime
-      name: StartupStatusTime
-      type: date
-    - jsonPath: .status.shutdown.scheduledTime
-      name: ShutdownScheduledTime
-      type: date
     - jsonPath: .status.shutdown.status
       name: ShutdownStatus
       type: string
-    - jsonPath: .status.shutdown.statusTime
-      name: ShutdownStatusTime
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
       type: date
     name: v1
     schema:
@@ -168,31 +156,15 @@ spec:
               shutdown:
                 description: Shutdown defines status of shutdown schedule
                 properties:
-                  scheduledTime:
-                    description: ScheduledTime defines time when cron scheduled
-                    format: date-time
-                    type: string
                   status:
                     description: Status defines how schedule finished
-                    type: string
-                  statusTime:
-                    description: Status defines when schedule finished
-                    format: date-time
                     type: string
                 type: object
               startup:
                 description: Startup defines status of startup schedule
                 properties:
-                  scheduledTime:
-                    description: ScheduledTime defines time when cron scheduled
-                    format: date-time
-                    type: string
                   status:
                     description: Status defines how schedule finished
-                    type: string
-                  statusTime:
-                    description: Status defines when schedule finished
-                    format: date-time
                     type: string
                 type: object
             type: object
