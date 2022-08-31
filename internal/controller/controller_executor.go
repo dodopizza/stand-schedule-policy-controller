@@ -13,7 +13,7 @@ import (
 
 // todo: check workitem.fireat and schedule.fireat
 // todo: validation webhook
-// todo: save state smth / leader election
+// todo: save state between reboots
 
 type (
 	WorkItem struct {
@@ -37,23 +37,23 @@ func (w *WorkItem) deadline() time.Time {
 }
 
 func (c *Controller) execute(i interface{}) error {
-	now := c.clock.Now()
+	started := c.clock.Now()
 	item := i.(WorkItem)
 
-	if now.Before(item.fireAt) {
+	if started.Before(item.fireAt) {
 		c.logger.Warn("Skip execution of policy because of current time before scheduled",
 			zap.String("policy_name", item.policyName),
 			zap.String("schedule_type", string(item.scheduleType)),
-			zap.Stringer("time", now),
+			zap.Stringer("time", started),
 			zap.Stringer("scheduled_at_time", item.fireAt))
 		return nil
 	}
 
-	if now.After(item.deadline()) {
+	if started.After(item.deadline()) {
 		c.logger.Warn("Skip execution of policy because of current time after deadline",
 			zap.String("policy_name", item.policyName),
 			zap.String("schedule_type", string(item.scheduleType)),
-			zap.Stringer("time", now),
+			zap.Stringer("time", started),
 			zap.Stringer("scheduled_deadline", item.deadline()))
 		return nil
 	}
@@ -79,10 +79,10 @@ func (c *Controller) execute(i interface{}) error {
 	switch item.scheduleType {
 	case apis.StatusShutdown:
 		err = c.executor.ExecuteShutdown(ctx, policy)
-		state.UpdateStatus(item.scheduleType, now, err)
+		state.UpdateStatus(item.scheduleType, c.clock.Now(), err)
 	case apis.StatusStartup:
 		err = c.executor.ExecuteStartup(ctx, policy)
-		state.UpdateStatus(item.scheduleType, now, err)
+		state.UpdateStatus(item.scheduleType, c.clock.Now(), err)
 	default:
 		err = fmt.Errorf("not supported schedule type specified: %s", item.scheduleType)
 	}
