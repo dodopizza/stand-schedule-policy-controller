@@ -35,7 +35,8 @@ func createLogger(lvl zapcore.Level) *zap.Logger {
 	cfg := zap.NewProductionConfig()
 	cfg.Level = zap.NewAtomicLevelAt(lvl)
 	cfg.EncoderConfig.TimeKey = "timestamp"
-	cfg.EncoderConfig.EncodeTime = zapcore.RFC3339TimeEncoder
+	cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	cfg.EncoderConfig.EncodeDuration = zapcore.StringDurationEncoder
 
 	logger, err := cfg.Build()
 	if err != nil {
