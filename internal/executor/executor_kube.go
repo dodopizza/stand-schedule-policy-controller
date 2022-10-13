@@ -101,6 +101,7 @@ func (ex *Executor) scaleDownApps(ctx context.Context, namespace string) error {
 	deployments = util.Where(deployments, func(_ int, d *apps.Deployment) bool {
 		return d.Spec.Replicas != nil && *d.Spec.Replicas != 0
 	})
+	ex.logger.Debug("Deployments count", zap.Int("count", len(deployments)))
 
 	statefulSets, err := ex.lister.StatefulSets.StatefulSets(namespace).List(labels.Everything())
 	if err != nil {
@@ -109,6 +110,7 @@ func (ex *Executor) scaleDownApps(ctx context.Context, namespace string) error {
 	statefulSets = util.Where(statefulSets, func(_ int, s *apps.StatefulSet) bool {
 		return s.Spec.Replicas != nil && *s.Spec.Replicas != 0
 	})
+	ex.logger.Debug("ScaleSets count", zap.Int("count", len(statefulSets)))
 
 	return multierr.Combine(
 		util.ForEachE(deployments, func(_ int, deployment *apps.Deployment) error {
@@ -179,7 +181,7 @@ func (ex *Executor) scaleUpApps(ctx context.Context, namespace string) error {
 		_, scaled := s.Annotations[_ReplicasAnnotation]
 		return replicas && scaled
 	})
-	ex.logger.Debug("ScaleSets count", zap.Int("count", len(deployments)))
+	ex.logger.Debug("ScaleSets count", zap.Int("count", len(statefulSets)))
 
 	return multierr.Combine(
 		util.ForEachE(statefulSets, func(_ int, sts *apps.StatefulSet) error {
