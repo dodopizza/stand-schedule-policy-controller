@@ -168,6 +168,7 @@ func (ex *Executor) scaleUpApps(ctx context.Context, namespace string) error {
 		_, scaled := d.Annotations[_ReplicasAnnotation]
 		return replicas && scaled
 	})
+	ex.logger.Debug("Deployments count", zap.Int("count", len(deployments)))
 
 	statefulSets, err := ex.lister.StatefulSets.StatefulSets(namespace).List(labels.Everything())
 	if err != nil {
@@ -178,6 +179,7 @@ func (ex *Executor) scaleUpApps(ctx context.Context, namespace string) error {
 		_, scaled := s.Annotations[_ReplicasAnnotation]
 		return replicas && scaled
 	})
+	ex.logger.Debug("ScaleSets count", zap.Int("count", len(deployments)))
 
 	return multierr.Combine(
 		util.ForEachE(statefulSets, func(_ int, sts *apps.StatefulSet) error {
