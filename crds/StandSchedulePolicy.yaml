@@ -4,7 +4,6 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.9.1-0.20220629131006-1878064c4cdf
-  creationTimestamp: null
   name: standschedulepolicies.automation.dodois.io
 spec:
   group: automation.dodois.io
