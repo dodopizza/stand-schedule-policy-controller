@@ -6,7 +6,7 @@ MAKEFILE_PATH := $(abspath $(lastword $(MAKEFILE_LIST)))
 CURRENT_DIR := $(dir $(MAKEFILE_PATH))
 PROJECT_NAME = stand-schedule-policy-controller
 DOCKER_IMAGE_COMMIT_SHA=$(shell git show -s --format=%h)
-DOCKER_IMAGE_REGISTRY = dodoreg.azurecr.io
+DOCKER_IMAGE_REGISTRY = acrdodo.azurecr.io
 DOCKER_IMAGE_REPO = ${DOCKER_IMAGE_REGISTRY}/${PROJECT_NAME}
 CONTROLLER_GEN=${GOPATH}/bin/controller-gen
 CONTROLLER_GEN_REQ_VERSION := v0.9.1-0.20220629131006-1878064c4cdf
